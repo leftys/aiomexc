@@ -58,23 +58,18 @@ class AiohttpSession(BaseSession):
             # https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
             await asyncio.sleep(0.25)
 
-    async def make_signed_request(
+    async def _request(
         self,
         method: MexcMethod[MexcType],
-        credentials: Credentials,
+        params: dict[str, Any],
+        headers: dict[str, Any],
         timeout: float | None = None,
     ) -> MexcType:
         session = await self.create_session()
         url = urljoin(self._base_url, method.__api_method__)
         params = _retort.dump(method)
-        headers = self._headers
 
         loggers.client.debug("Requesting %s with params %s", url, params)
-
-        if method.__requires_auth__:
-            # Use request-specific credentials if provided, otherwise fall back to session credentials
-            params = self.encrypt_params(credentials.secret_key, params)
-            headers["X-MEXC-APIKEY"] = credentials.access_key
 
         try:
             async with session.request(
@@ -101,41 +96,28 @@ class AiohttpSession(BaseSession):
         loggers.client.debug("Response: %s", response)
         return cast(MexcType, response.result)
 
+
+    async def make_signed_request(
+        self,
+        method: MexcMethod[MexcType],
+        credentials: Credentials,
+        timeout: float | None = None,
+    ) -> MexcType:
+        params = _retort.dump(method)
+        headers = self._headers.copy()
+
+        if method.__requires_auth__:
+            params = self.encrypt_params(credentials.secret_key, params)
+            headers["X-MEXC-APIKEY"] = credentials.access_key
+
+        return await self._request(method, params, headers, timeout)
+
     async def make_request(
         self,
         method: MexcMethod[MexcType],
         timeout: float | None = None,
     ) -> MexcType:
-        session = await self.create_session()
-        url = urljoin(self._base_url, method.__api_method__)
-        params = _retort.dump(method)
-
-        loggers.client.debug("Requesting %s with params %s", url, params)
-
-        try:
-            async with session.request(
-                method.__api_http_method__,
-                url,
-                params=params,
-                headers=self._headers,
-                timeout=ClientTimeout(
-                    total=self.timeout if timeout is None else timeout
-                ),
-            ) as resp:
-                raw_result = await resp.json()
-                api_code = raw_result.get("code", 200)
-                wrapped_result = {
-                    "ok": resp.ok,
-                    "msg": raw_result.get("msg"),
-                    "code": api_code,
-                    "result": raw_result if resp.ok else None,
-                }  # this is needed, because mexc api don't have stable response structure
-        except asyncio.TimeoutError:
-            raise
-
-        response = self.check_response(method, api_code, wrapped_result)
-        loggers.client.debug("Response: %s", response)
-        return cast(MexcType, response.result)
+        return await self._request(method, _retort.dump(method), self._headers, timeout)
 
     async def __aenter__(self) -> "AiohttpSession":
         await self.create_session()

@@ -19,6 +19,7 @@ class MexcClient:
         self, method: MexcMethod[MexcType], credentials: Credentials | None = None
     ) -> MexcType:
         if method.__requires_auth__:
+            # Use request-specific credentials if provided, otherwise fall back to session credentials
             credentials = credentials or self.credentials
             if credentials is None:
                 raise ValueError(
