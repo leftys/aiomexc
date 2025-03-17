@@ -67,7 +67,6 @@ class AiohttpSession(BaseSession):
     ) -> MexcType:
         session = await self.create_session()
         url = urljoin(self._base_url, method.__api_method__)
-        params = _retort.dump(method)
 
         loggers.client.debug("Requesting %s with params %s", url, params)
 
@@ -95,7 +94,6 @@ class AiohttpSession(BaseSession):
         response = self.check_response(method, api_code, wrapped_result)
         loggers.client.debug("Response: %s", response)
         return cast(MexcType, response.result)
-
 
     async def make_signed_request(
         self,

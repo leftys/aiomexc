@@ -1,4 +1,9 @@
-from aiomexc.methods import GetTickerPrice, GetAccountInformation, QueryOrder, MexcMethod
+from aiomexc.methods import (
+    GetTickerPrice,
+    GetAccountInformation,
+    QueryOrder,
+    MexcMethod,
+)
 from aiomexc.types import TickerPrice, AccountInformation, Order, MexcType
 
 from .session.base import BaseSession, Credentials
