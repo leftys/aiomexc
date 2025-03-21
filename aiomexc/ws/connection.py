@@ -135,6 +135,11 @@ class WSConnection:
         private: bool = False,
     ) -> Callable[[T], Coroutine[Any, Any, None]]:
         """Register a handler for a specific channel and add the channel to streams."""
+        if len(self._streams) + 1 >= 30:
+            raise ValueError(
+                "MEXC WebSocket API only supports up to 30 streams per connection"
+            )
+
         if private and not self._is_private:
             raise ValueError(
                 "Cannot register private channel handler for public connection"
@@ -144,16 +149,11 @@ class WSConnection:
         if message_type is None:
             raise ValueError(f"Unknown channel type: {channel}")
 
-        if len(self._streams) + 1 >= 30:
-            raise ValueError(
-                "MEXC WebSocket API only supports up to 30 streams per connection"
-            )
-
         self._streams.append(channel)
         self._channel_handlers[channel].append(ChannelHandler(handler, message_type))
         return handler
 
-    def aggre_deals(self, symbol: str, interval: str = "10ms"):
+    def aggre_deals(self, symbol: str, interval: Literal["10ms", "100ms"]):
         def decorator(
             handler: Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]]:
