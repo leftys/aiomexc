@@ -68,7 +68,9 @@ class AiohttpSession(BaseSession):
         session = await self.create_session()
         url = urljoin(self._base_url, method.__api_method__)
 
-        loggers.client.debug("Requesting %s with params %s", url, params)
+        loggers.client.debug(
+            "Requesting %s %s with params %s", method.__api_http_method__, url, params
+        )
 
         try:
             async with session.request(
@@ -81,12 +83,12 @@ class AiohttpSession(BaseSession):
                 ),
             ) as resp:
                 raw_result = await resp.json()
-                api_code = raw_result.get("code", 200)
+                api_code = int(raw_result.get("code", 200))
                 wrapped_result = {
                     "ok": resp.ok,
                     "msg": raw_result.get("msg"),
                     "code": api_code,
-                    "result": raw_result if resp.ok else None,
+                    "result": raw_result if api_code == 200 else None,
                 }  # this is needed, because mexc api don't have stable response structure
         except asyncio.TimeoutError:
             raise

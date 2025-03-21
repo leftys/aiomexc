@@ -3,8 +3,19 @@ from aiomexc.methods import (
     GetAccountInformation,
     QueryOrder,
     MexcMethod,
+    CreateListenKey,
+    GetListenKeys,
+    ExtendListenKey,
+    DeleteListenKey,
 )
-from aiomexc.types import TickerPrice, AccountInformation, Order, MexcType
+from aiomexc.types import (
+    TickerPrice,
+    AccountInformation,
+    Order,
+    MexcType,
+    ListenKey,
+    ListenKeys,
+)
 
 from .session.base import BaseSession, Credentials
 from .session.aiohttp import AiohttpSession
@@ -57,4 +68,28 @@ class MexcClient:
                 orig_client_order_id=orig_client_order_id,
             ),
             credentials=credentials,
+        )
+
+    async def create_listen_key(
+        self, credentials: Credentials | None = None
+    ) -> ListenKey:
+        return await self(CreateListenKey(), credentials=credentials)
+
+    async def get_listen_keys(
+        self, credentials: Credentials | None = None
+    ) -> ListenKeys:
+        return await self(GetListenKeys(), credentials=credentials)
+
+    async def extend_listen_key(
+        self, listen_key: str, credentials: Credentials | None = None
+    ) -> ListenKey:
+        return await self(
+            ExtendListenKey(listen_key=listen_key), credentials=credentials
+        )
+
+    async def delete_listen_key(
+        self, listen_key: str, credentials: Credentials | None = None
+    ) -> ListenKey:
+        return await self(
+            DeleteListenKey(listen_key=listen_key), credentials=credentials
         )

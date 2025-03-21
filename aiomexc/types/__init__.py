@@ -2,6 +2,7 @@ from .base import MexcResult, MexcType
 from .account import AccountInformation, Balance
 from .order import Order
 from .ticker import TickerPrice
+from .user_data_stream import ListenKey, ListenKeys
 
 __all__ = [
     "MexcResult",
@@ -10,4 +11,6 @@ __all__ = [
     "Balance",
     "Order",
     "TickerPrice",
+    "ListenKey",
+    "ListenKeys",
 ]

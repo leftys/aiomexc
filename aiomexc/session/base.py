@@ -76,18 +76,8 @@ class BaseSession(ABC):
         return params
 
     def check_response(
-        self, method: MexcMethod[MexcType], status_code: int, content: dict
+        self, method: MexcMethod[MexcType], status_code: int, json_data: dict
     ) -> MexcResult[MexcType]:
-        # try:
-        #     json_data = self.json_loads(content)
-        # except Exception as e:
-        #     raise ClientDecodeError(
-        #         "Failed to decode object",
-        #         e,
-        #         content,
-        #     )
-        json_data = content
-
         response_type = MexcResult[method.__returning__]
         response = _retort.load(json_data, response_type)
 

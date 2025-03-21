@@ -1,7 +1,14 @@
 from adaptix import NameStyle, Retort, name_mapping
 
-from aiomexc.methods import MexcMethod, QueryOrder
-from aiomexc.types import Order, AccountInformation, TickerPrice
+from aiomexc.methods import (
+    MexcMethod,
+    QueryOrder,
+    CreateListenKey,
+    GetListenKeys,
+    ExtendListenKey,
+    DeleteListenKey,
+)
+from aiomexc.types import Order, AccountInformation, TickerPrice, ListenKey, ListenKeys
 
 type_recipes = [
     name_mapping(
@@ -12,6 +19,8 @@ type_recipes = [
         Order,
         AccountInformation,
         TickerPrice,
+        ListenKey,
+        ListenKeys,
     ]
 ]
 
@@ -24,6 +33,26 @@ _retort = Retort(
         ),
         name_mapping(
             QueryOrder,
+            name_style=NameStyle.CAMEL,
+            omit_default=True,
+        ),
+        name_mapping(
+            CreateListenKey,
+            name_style=NameStyle.CAMEL,
+            omit_default=True,
+        ),
+        name_mapping(
+            GetListenKeys,
+            name_style=NameStyle.CAMEL,
+            omit_default=True,
+        ),
+        name_mapping(
+            ExtendListenKey,
+            name_style=NameStyle.CAMEL,
+            omit_default=True,
+        ),
+        name_mapping(
+            DeleteListenKey,
             name_style=NameStyle.CAMEL,
             omit_default=True,
         ),
