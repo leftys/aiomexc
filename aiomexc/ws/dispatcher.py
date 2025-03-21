@@ -12,6 +12,7 @@ class EventType(StrEnum):
     DISCONNECT = "disconnect"
     MESSAGE = "message"
     ERROR = "error"
+    PING = "ping"
     PONG = "pong"
     SUBSCRIPTION = "subscription"
     LISTEN_KEY_EXTENDED = "listen_key_extended"

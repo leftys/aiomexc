@@ -69,6 +69,12 @@ class MexcApiKeyMissing(MexcAPIError):
     """
 
 
+class MexcApiInvalidListenKey(MexcAPIError):
+    """
+    Exception raised when listen key is invalid.
+    """
+
+
 class ClientDecodeError(MexcClientError):
     """
     Exception raised when client can't decode response. (Malformed response, etc.)
@@ -87,3 +93,45 @@ class ClientDecodeError(MexcClientError):
             f"{original_type.__module__}.{original_type.__name__}: {self.original}\n"
             f"Content: {self.data}"
         )
+
+
+class MexcWsStreamsLimit(MexcClientError):
+    """
+    Exception raised when too many streams are subscribed.
+    """
+
+
+class MexcWsNoStreamsProvided(MexcClientError):
+    """
+    Exception raised when no streams are provided.
+    """
+
+
+class MexcWsNoCredentialsProvided(MexcClientError):
+    """
+    Exception raised when no credentials are provided.
+    """
+
+
+class MexcWsInvalidStream(MexcClientError):
+    """
+    Exception raised when an invalid stream is provided.
+    """
+
+    def __init__(self, stream: str):
+        self.stream = stream
+
+    def __str__(self) -> str:
+        return f"Invalid stream: {self.stream}"
+
+
+class MexcWsPrivateStream(MexcClientError):
+    """
+    Exception raised when a private stream is provided to a public connection.
+    """
+
+    def __init__(self, stream: str):
+        self.stream = stream
+
+    def __str__(self) -> str:
+        return f"Private stream: {self.stream}"

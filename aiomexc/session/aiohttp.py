@@ -93,8 +93,8 @@ class AiohttpSession(BaseSession):
         except asyncio.TimeoutError:
             raise
 
+        loggers.client.debug("Response: %s", wrapped_result)
         response = self.check_response(method, api_code, wrapped_result)
-        loggers.client.debug("Response: %s", response)
         return cast(MexcType, response.result)
 
     async def make_signed_request(

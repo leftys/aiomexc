@@ -6,6 +6,15 @@ from typing import Callable, Coroutine, Any, Literal, TypeVar, Generic, Type
 from urllib.parse import urljoin
 
 from aiomexc import MexcClient
+from aiomexc.exceptions import (
+    MexcWsStreamsLimit,
+    MexcWsNoStreamsProvided,
+    MexcWsNoCredentialsProvided,
+    MexcWsInvalidStream,
+    MexcWsPrivateStream,
+    MexcApiInvalidListenKey,
+)
+
 from .proto import (
     PushMessage,
     PublicDealsMessage,
@@ -34,7 +43,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class ChannelHandler(Generic[T]):
+class StreamHandler(Generic[T]):
     def __init__(
         self, handler: Callable[[T], Coroutine[Any, Any, None]], message_type: Type[T]
     ):
@@ -50,7 +59,7 @@ class ChannelHandler(Generic[T]):
 
 
 class WSConnection:
-    CHANNEL_TYPES = {
+    STREAM_TYPES = {
         "spot@private.deals.v3.api.pb": PrivateDealsMessage,
         "spot@private.orders.v3.api.pb": PrivateOrdersMessage,
         "spot@private.account.v3.api.pb": PrivateAccountMessage,
@@ -88,9 +97,8 @@ class WSConnection:
             event_type: EventDispatcher(event_type) for event_type in EventType
         }
 
-        self._channel_handlers: defaultdict[str, list[ChannelHandler]] = defaultdict(
-            list
-        )
+        self._stream_handlers: defaultdict[str, list[StreamHandler]] = defaultdict(list)
+        self._active_tasks: set[asyncio.Task] = set()
 
     def on_connect(self, handler: Callable[[], Coroutine[Any, Any, None]]) -> None:
         self._events[EventType.CONNECT].add(handler)
@@ -118,42 +126,41 @@ class WSConnection:
     ) -> None:
         self._events[EventType.ERROR].add(handler)
 
+    def on_ping(self, handler: Callable[[], Coroutine[Any, Any, None]]) -> None:
+        self._events[EventType.PING].add(handler)
+
     def on_pong(self, handler: Callable[[], Coroutine[Any, Any, None]]) -> None:
         self._events[EventType.PONG].add(handler)
 
-    def _get_message_type(self, channel: str) -> Type | None:
-        """Get the message type for a given channel."""
-        for pattern, msg_type in self.CHANNEL_TYPES.items():
-            if pattern in channel:
+    def _get_message_type(self, stream: str) -> Type | None:
+        """Get the message type for a given stream."""
+        for pattern, msg_type in self.STREAM_TYPES.items():
+            if pattern in stream:
                 return msg_type
         return None
 
     def _register_channel_handler(
         self,
-        channel: str,
+        stream: str,
         handler: Callable[[T], Coroutine[Any, Any, None]],
         private: bool = False,
     ) -> Callable[[T], Coroutine[Any, Any, None]]:
         """Register a handler for a specific channel and add the channel to streams."""
         if len(self._streams) + 1 >= 30:
-            raise ValueError(
-                "MEXC WebSocket API only supports up to 30 streams per connection"
-            )
+            raise MexcWsStreamsLimit()
 
         if private and not self._is_private:
-            raise ValueError(
-                "Cannot register private channel handler for public connection"
-            )
+            raise MexcWsPrivateStream(stream=stream)
 
-        message_type = self._get_message_type(channel)
+        message_type = self._get_message_type(stream)
         if message_type is None:
-            raise ValueError(f"Unknown channel type: {channel}")
+            raise MexcWsInvalidStream(stream=stream)
 
-        self._streams.append(channel)
-        self._channel_handlers[channel].append(ChannelHandler(handler, message_type))
+        self._streams.append(stream)
+        self._stream_handlers[stream].append(StreamHandler(handler, message_type))
         return handler
 
-    def aggre_deals(self, symbol: str, interval: Literal["10ms", "100ms"]):
+    def aggre_deals(self, symbol: str, interval: Literal["10ms", "100ms"] = "10ms"):
         def decorator(
             handler: Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]]:
@@ -186,7 +193,7 @@ class WSConnection:
 
         return decorator
 
-    def aggre_depth(self, symbol: str, interval: Literal["100ms", "10ms"]):
+    def aggre_depth(self, symbol: str, interval: Literal["100ms", "10ms"] = "100ms"):
         def decorator(
             handler: Callable[[PublicAggreDepthsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicAggreDepthsMessage], Coroutine[Any, Any, None]]:
@@ -264,9 +271,16 @@ class WSConnection:
 
         return decorator
 
+    def _add_task(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Add a task to the active tasks set and remove it when done."""
+        task = asyncio.create_task(coro)
+        self._active_tasks.add(task)
+        task.add_done_callback(self._active_tasks.discard)
+
     async def _trigger_event(self, event: EventType, *args: Any) -> None:
-        """Trigger handlers for a specific event."""
-        await self._events[event].trigger(*args)
+        """Trigger handlers for a specific event in separate tasks."""
+        for handler in self._events[event].handlers:
+            self._add_task(handler(*args))
 
         # If this isn't an error event, and there was an exception, trigger error handlers
         if event != EventType.ERROR and args and isinstance(args[0], Exception):
@@ -275,12 +289,9 @@ class WSConnection:
     async def _trigger_channel_handlers(
         self, channel: str, message: PushMessage
     ) -> None:
-        for handler in self._channel_handlers.get(channel, []):
-            try:
-                await handler(message)
-            except Exception as e:
-                logger.exception(f"Error in channel handler for {channel}: {e}")
-                await self._trigger_event(EventType.ERROR, e)
+        """Trigger channel handlers in separate tasks."""
+        for handler in self._stream_handlers.get(channel, []):
+            self._add_task(handler(message))
 
     def is_sub_message(self, message: dict) -> bool:
         if messages := message.get("msg"):
@@ -298,6 +309,7 @@ class WSConnection:
         while True:
             await asyncio.sleep(30)
             await self._session.ping()
+            await self._trigger_event(EventType.PING)
             logger.debug("Keepalive ping sent")
 
     async def keepalivate_extend_listen_key(self):
@@ -306,7 +318,7 @@ class WSConnection:
         30 minutes is recommended by MEXC API docs: https://mexcdevelop.github.io/apidocs/spot_v3_en/#listen-key
         """
         if self._credentials is None or self._credentials.listen_key is None:
-            raise RuntimeError("No credentials provided, cannot extend listen key")
+            raise MexcWsNoCredentialsProvided()
 
         while True:
             await asyncio.sleep(1800)
@@ -323,7 +335,7 @@ class WSConnection:
         If listen key is not provided, it will be created, else extended
         """
         if self._credentials is None:
-            raise RuntimeError("No credentials provided, cannot get listen key")
+            raise MexcWsNoCredentialsProvided()
 
         if self._credentials.is_expired():
             response = await self._client.create_listen_key(
@@ -332,11 +344,19 @@ class WSConnection:
             self._credentials.update(response.listen_key)
 
         elif self._credentials.listen_key is not None:
-            response = await self._client.extend_listen_key(
-                credentials=self._credentials, listen_key=self._credentials.listen_key
-            )
-            self._credentials.update(response.listen_key)
-            await self._trigger_event(EventType.LISTEN_KEY_EXTENDED, self._credentials)
+            try:
+                response = await self._client.extend_listen_key(
+                    credentials=self._credentials,
+                    listen_key=self._credentials.listen_key,
+                )
+                self._credentials.update(response.listen_key)
+                await self._trigger_event(
+                    EventType.LISTEN_KEY_EXTENDED, self._credentials
+                )
+            except MexcApiInvalidListenKey:
+                self._credentials.listen_key = None
+                logger.warning("Provided not valid listen key, creating new one")
+                return await self.get_listen_key()
 
         return self._credentials.listen_key
 
@@ -346,7 +366,7 @@ class WSConnection:
         If this is private connection, connections will be created with listen key
         """
         if len(self._streams) == 0:
-            raise ValueError("No streams provided, connection will be useless!")
+            raise MexcWsNoStreamsProvided()
 
         try:
             url = self._base_url
