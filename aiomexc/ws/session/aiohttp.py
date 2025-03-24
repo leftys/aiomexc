@@ -1,9 +1,13 @@
 from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 
 from aiomexc.ws.messages import PING, subscription
-from aiomexc.ws.proto import PushMessage
+from aiomexc.exceptions import (
+    MexcWsConnectionClosed,
+    MexcWsConnectionError,
+    MexcWsConnectionNotEstablished,
+)
 
-from .base import BaseWsSession
+from .base import BaseWsSession, EventMessage, ConnectionMessage
 
 
 class AiohttpWsSession(BaseWsSession):
@@ -28,35 +32,35 @@ class AiohttpWsSession(BaseWsSession):
 
     async def subscribe(self, streams: list[str]) -> None:
         if self.ws_session is None or self.ws_session.closed:
-            raise RuntimeError("WebSocket session not connected")
+            raise MexcWsConnectionNotEstablished()
 
         await self.ws_session.send_str(self.dump_message(subscription(streams)))
 
-    async def receive(self) -> PushMessage | dict:
+    async def receive(self) -> EventMessage | ConnectionMessage:
         if self.ws_session is None or self.ws_session.closed:
-            raise RuntimeError("WebSocket session not connected")
+            raise MexcWsConnectionNotEstablished()
 
         msg = await self.ws_session.receive()
 
         if msg.type == WSMsgType.TEXT:
-            return self.load_json_message(msg.data)
+            return ConnectionMessage(self.load_json_message(msg.data))
 
         elif msg.type == WSMsgType.BINARY:
-            return self.load_message(msg.data)
+            return EventMessage(self.load_message(msg.data))
 
-        elif msg.type == WSMsgType.CLOSE:
-            raise RuntimeError("WebSocket closed")
+        elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
+            raise MexcWsConnectionClosed()
 
-        raise RuntimeError(f"Unknown message type: {msg.type}")
+        raise MexcWsConnectionError(f"Unknown message type: {msg.type}")
 
     async def ping(self) -> None:
         if self.ws_session is None or self.ws_session.closed:
-            raise RuntimeError("WebSocket session not connected")
+            raise MexcWsConnectionNotEstablished()
 
         await self.ws_session.send_str(PING)
 
     async def close(self) -> None:
         if self.ws_session is None or self.ws_session.closed:
-            raise RuntimeError("WebSocket session not connected")
+            raise MexcWsConnectionNotEstablished()
 
         await self.ws_session.close()

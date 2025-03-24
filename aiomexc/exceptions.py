@@ -135,3 +135,30 @@ class MexcWsPrivateStream(MexcClientError):
 
     def __str__(self) -> str:
         return f"Private stream: {self.stream}"
+
+
+class MexcWsConnectionClosed(MexcClientError):
+    """
+    Exception raised when the connection is closed.
+    """
+
+    def __str__(self) -> str:
+        return "Connection closed"
+
+
+class MexcWsConnectionError(MexcClientError):
+    """
+    Exception raised when the connection is not established.
+    """
+
+    def __str__(self) -> str:
+        return "Connection error"
+
+
+class MexcWsConnectionNotEstablished(MexcClientError):
+    """
+    Exception raised when the connection is not established.
+    """
+
+    def __str__(self) -> str:
+        return "Connection not established"

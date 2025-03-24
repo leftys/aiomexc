@@ -2,11 +2,22 @@ import json
 
 from typing import Callable, Any
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from aiomexc.ws.proto.message import PushMessage
 
 _JsonLoads = Callable[..., Any]
 _JsonDumps = Callable[..., str]
+
+
+@dataclass
+class EventMessage:
+    message: PushMessage
+
+
+@dataclass
+class ConnectionMessage:
+    message: dict
 
 
 class BaseWsSession(ABC):
@@ -35,7 +46,7 @@ class BaseWsSession(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def receive(self) -> PushMessage | dict:
+    async def receive(self) -> EventMessage | ConnectionMessage:
         """
         Receive a message from the websocket
         """

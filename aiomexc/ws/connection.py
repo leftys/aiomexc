@@ -1,8 +1,19 @@
 import asyncio
 import logging
+import time
 
 from collections import defaultdict
-from typing import Callable, Coroutine, Any, Literal, TypeVar, Generic, Type
+from typing import (
+    Callable,
+    Coroutine,
+    Any,
+    Literal,
+    TypeVar,
+    Generic,
+    Type,
+    cast,
+    AsyncGenerator,
+)
 from urllib.parse import urljoin
 
 from aiomexc import MexcClient
@@ -12,7 +23,6 @@ from aiomexc.exceptions import (
     MexcWsNoCredentialsProvided,
     MexcWsInvalidStream,
     MexcWsPrivateStream,
-    MexcApiInvalidListenKey,
 )
 
 from .proto import (
@@ -34,9 +44,10 @@ from .proto import (
     PublicAggreBookTickerMessage,
 )
 
-from .session.base import BaseWsSession
+from .session.base import BaseWsSession, EventMessage, ConnectionMessage
 from .credentials import WSCredentials
 from .dispatcher import EventType, EventDispatcher
+from .messages import ListenKeyExtendedMessage
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +110,13 @@ class WSConnection:
 
         self._stream_handlers: defaultdict[str, list[StreamHandler]] = defaultdict(list)
         self._active_tasks: set[asyncio.Task] = set()
+        self._connected = False
 
     def on_connect(self, handler: Callable[[], Coroutine[Any, Any, None]]) -> None:
         self._events[EventType.CONNECT].add(handler)
 
     def on_listen_key_extended(
-        self, handler: Callable[[WSCredentials], Coroutine[Any, Any, None]]
+        self, handler: Callable[[ListenKeyExtendedMessage], Coroutine[Any, Any, None]]
     ) -> None:
         self._events[EventType.LISTEN_KEY_EXTENDED].add(handler)
 
@@ -314,19 +326,39 @@ class WSConnection:
 
     async def keepalivate_extend_listen_key(self):
         """
-        Function to update listen key every 30 minutes
-        30 minutes is recommended by MEXC API docs: https://mexcdevelop.github.io/apidocs/spot_v3_en/#listen-key
+        Function to update listen key dynamically based on its expiration time
+        We update the key 5 minutes before it expires to avoid connection issues
         """
         if self._credentials is None or self._credentials.listen_key is None:
             raise MexcWsNoCredentialsProvided()
 
         while True:
-            await asyncio.sleep(1800)
+            # Calculate time until expiration minus 5 minutes buffer
+            now = int(time.time())
+            if self._credentials.expires_at is None:
+                # If expires_at is None, use default 30 minutes
+                sleep_time = 1800 - 300  # 30 minutes - 5 minutes buffer
+            else:
+                time_until_expiry = self._credentials.expires_at - now
+                sleep_time = max(
+                    0, time_until_expiry - 300
+                )  # 300 seconds = 5 minutes buffer
+
+            if sleep_time > 0:
+                logger.debug("Sleeping for %s seconds to extend listen key", sleep_time)
+                await asyncio.sleep(sleep_time)
+
             response = await self._client.extend_listen_key(
                 credentials=self._credentials, listen_key=self._credentials.listen_key
             )
             self._credentials.update(response.listen_key)
-            await self._trigger_event(EventType.LISTEN_KEY_EXTENDED, self._credentials)
+            await self._trigger_event(
+                EventType.LISTEN_KEY_EXTENDED,
+                ListenKeyExtendedMessage(
+                    listen_key=self._credentials.listen_key,
+                    expires_at=cast(int, self._credentials.expires_at),
+                ),
+            )
             logger.debug("Listen key extended")
 
     async def get_listen_key(self) -> str | None:
@@ -342,21 +374,13 @@ class WSConnection:
                 credentials=self._credentials
             )
             self._credentials.update(response.listen_key)
-
-        elif self._credentials.listen_key is not None:
-            try:
-                response = await self._client.extend_listen_key(
-                    credentials=self._credentials,
-                    listen_key=self._credentials.listen_key,
-                )
-                self._credentials.update(response.listen_key)
-                await self._trigger_event(
-                    EventType.LISTEN_KEY_EXTENDED, self._credentials
-                )
-            except MexcApiInvalidListenKey:
-                self._credentials.listen_key = None
-                logger.warning("Provided not valid listen key, creating new one")
-                return await self.get_listen_key()
+            await self._trigger_event(
+                EventType.LISTEN_KEY_EXTENDED,
+                ListenKeyExtendedMessage(
+                    listen_key=cast(str, self._credentials.listen_key),
+                    expires_at=cast(int, self._credentials.expires_at),
+                ),
+            )
 
         return self._credentials.listen_key
 
@@ -388,25 +412,41 @@ class WSConnection:
             await self._trigger_event(EventType.ERROR, e)
             raise
 
-    async def receive(self):
+    async def _listen_updates(
+        self,
+    ) -> AsyncGenerator[EventMessage | ConnectionMessage, None]:
         while True:
             try:
-                msg = await self._session.receive()
-                if isinstance(msg, PushMessage):
-                    await self._trigger_channel_handlers(msg.channel, msg)
-                else:
-                    if self.is_sub_message(msg):
-                        await self._trigger_event(EventType.SUBSCRIPTION, msg)
-                    elif self.is_pong_message(msg):
-                        await self._trigger_event(EventType.PONG)
+                if not self._connected:
+                    await self.connect()
+                    self._connected = True
 
+                msg = await self._session.receive()
             except Exception as e:
+                logger.error("Error listening to updates: %s", e)
                 await self._trigger_event(EventType.ERROR, e)
                 raise
 
+            yield msg
+
+    async def _listening(self):
+        try:
+            async for msg in self._listen_updates():
+                if isinstance(msg, EventMessage):
+                    await self._trigger_channel_handlers(
+                        msg.message.channel, msg.message
+                    )
+                elif isinstance(msg, ConnectionMessage):
+                    if self.is_sub_message(msg.message):
+                        await self._trigger_event(EventType.SUBSCRIPTION, msg.message)
+                    elif self.is_pong_message(msg.message):
+                        await self._trigger_event(EventType.PONG)
+
+        finally:
+            logger.info("Listening stopped")
+
     async def start_listening(self):
-        await self.connect()
-        await self.receive()
+        await self._listening()
 
     async def close(self):
         try:
