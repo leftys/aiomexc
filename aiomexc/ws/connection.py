@@ -103,6 +103,8 @@ class WSConnection:
         self._listen_key_update_task: asyncio.Task | None = None
         self._base_url = base_url
         self._session = session
+        self._is_listening = False
+        self._shutdown_event = asyncio.Event()
 
         self._events: dict[EventType, EventDispatcher] = {
             event_type: EventDispatcher(event_type) for event_type in EventType
@@ -415,7 +417,7 @@ class WSConnection:
     async def _listen_updates(
         self,
     ) -> AsyncGenerator[EventMessage | ConnectionMessage, None]:
-        while True:
+        while not self._shutdown_event.is_set():
             try:
                 if not self._connected:
                     await self.connect()
@@ -425,12 +427,14 @@ class WSConnection:
             except Exception as e:
                 logger.error("Error listening to updates: %s", e)
                 await self._trigger_event(EventType.ERROR, e)
-                raise
+                if not self._shutdown_event.is_set():
+                    raise
 
             yield msg
 
     async def _listening(self):
         try:
+            self._is_listening = True
             async for msg in self._listen_updates():
                 if isinstance(msg, EventMessage):
                     await self._trigger_channel_handlers(
@@ -443,13 +447,46 @@ class WSConnection:
                         await self._trigger_event(EventType.PONG)
 
         finally:
+            self._is_listening = False
             logger.info("Listening stopped")
 
     async def start_listening(self):
+        """Start listening to WebSocket updates."""
+        if self._is_listening:
+            logger.warning("Already listening")
+            return
+
+        self._shutdown_event.clear()
         await self._listening()
+
+    async def stop_listening(self):
+        """Gracefully stop listening to WebSocket updates."""
+        if not self._is_listening:
+            logger.warning("Not listening")
+            return
+
+        self._shutdown_event.set()
+
+        # Cancel all active tasks
+        for task in self._active_tasks:
+            if not task.done():
+                task.cancel()
+
+        # Wait for all tasks to complete
+        if self._active_tasks:
+            await asyncio.gather(*self._active_tasks, return_exceptions=True)
+
+        # Close the WebSocket connection
+        await self.close()
 
     async def close(self):
         try:
+            if self._ping_task and not self._ping_task.done():
+                self._ping_task.cancel()
+
+            if self._listen_key_update_task and not self._listen_key_update_task.done():
+                self._listen_key_update_task.cancel()
+
             await self._session.close()
             await self._trigger_event(EventType.DISCONNECT)
         except Exception as e:
