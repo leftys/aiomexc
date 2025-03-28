@@ -23,6 +23,7 @@ from aiomexc.exceptions import (
     MexcWsNoCredentialsProvided,
     MexcWsInvalidStream,
     MexcWsPrivateStream,
+    MexcWsConnectionClosed,
 )
 
 from .proto import (
@@ -424,6 +425,12 @@ class WSConnection:
                     self._connected = True
 
                 msg = await self._session.receive()
+
+            except MexcWsConnectionClosed:
+                logger.debug("Connection closed")
+                self._connected = False
+                continue
+
             except Exception as e:
                 logger.error("Error listening to updates: %s", e)
                 await self._trigger_event(EventType.ERROR, e)
