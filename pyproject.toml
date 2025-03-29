@@ -67,6 +67,7 @@ packages = ["aiomexc"]
 [tool.hatch.build]
 skip-excluded-dirs = true
 exclude = ["/tests", "/docs"]
+include = ["aiomexc", "pyproject.toml", "README.md"]
 
 [tool.mypy]
 files = ["aiomexc"]
