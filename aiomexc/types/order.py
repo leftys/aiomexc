@@ -20,6 +20,6 @@ class Order:
     side: OrderSide
     stop_price: Decimal | None
     time: int
-    update_time: int
+    update_time: int | None
     is_working: bool
     orig_quote_order_qty: Decimal | None

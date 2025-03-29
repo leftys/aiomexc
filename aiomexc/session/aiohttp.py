@@ -83,10 +83,19 @@ class AiohttpSession(BaseSession):
                 ),
             ) as resp:
                 raw_result = await resp.json()
-                api_code = int(raw_result.get("code", 200))
+
+                if isinstance(
+                    raw_result, dict
+                ):  # we can trust the api that the error will not be returned in the list
+                    api_code = int(raw_result.get("code", 200))
+                    msg = raw_result.get("msg")
+                else:
+                    api_code = 200
+                    msg = None
+
                 wrapped_result = {
                     "ok": resp.ok,
-                    "msg": raw_result.get("msg"),
+                    "msg": msg,
                     "code": api_code,
                     "result": raw_result if api_code == 200 else None,
                 }  # this is needed, because mexc api don't have stable response structure

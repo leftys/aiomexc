@@ -7,6 +7,7 @@ from aiomexc.methods import (
     GetListenKeys,
     ExtendListenKey,
     DeleteListenKey,
+    GetOpenOrders,
 )
 from aiomexc.types import (
     TickerPrice,
@@ -93,3 +94,8 @@ class MexcClient:
         return await self(
             DeleteListenKey(listen_key=listen_key), credentials=credentials
         )
+
+    async def get_open_orders(
+        self, symbol: str, credentials: Credentials | None = None
+    ) -> list[Order]:
+        return await self(GetOpenOrders(symbol=symbol), credentials=credentials)

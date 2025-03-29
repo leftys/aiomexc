@@ -15,3 +15,13 @@ class QueryOrder(MexcMethod):
     symbol: str
     order_id: str | None
     orig_client_order_id: str | None
+
+
+@dataclass(kw_only=True)
+class GetOpenOrders(MexcMethod):
+    __returning__ = list[Order]
+    __api_http_method__ = HTTPMethod.GET
+    __api_method__ = "openOrders"
+    __requires_auth__ = True
+
+    symbol: str
