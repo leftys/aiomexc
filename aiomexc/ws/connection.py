@@ -57,10 +57,14 @@ T = TypeVar("T")
 
 class StreamHandler(Generic[T]):
     def __init__(
-        self, handler: Callable[[T], Coroutine[Any, Any, None]], message_type: Type[T]
+        self,
+        handler: Callable[[T], Coroutine[Any, Any, None]],
+        message_type: Type[T],
+        handle_as_task: bool = True,
     ):
         self.handler = handler
         self.message_type = message_type
+        self.handle_as_task = handle_as_task
 
     async def __call__(self, msg: PushMessage) -> None:
         if msg.message is None:
@@ -159,6 +163,7 @@ class WSConnection:
         stream: str,
         handler: Callable[[T], Coroutine[Any, Any, None]],
         private: bool = False,
+        handle_as_task: bool = True,
     ) -> Callable[[T], Coroutine[Any, Any, None]]:
         """Register a handler for a specific channel and add the channel to streams."""
         if len(self._streams) + 1 >= 30:
@@ -172,15 +177,22 @@ class WSConnection:
             raise MexcWsInvalidStream(stream=stream)
 
         self._streams.append(stream)
-        self._stream_handlers[stream].append(StreamHandler(handler, message_type))
+        self._stream_handlers[stream].append(
+            StreamHandler(handler, message_type, handle_as_task)
+        )
         return handler
 
-    def aggre_deals(self, symbol: str, interval: Literal["10ms", "100ms"] = "10ms"):
+    def aggre_deals(
+        self,
+        symbol: str,
+        interval: Literal["10ms", "100ms"] = "10ms",
+        handle_as_task: bool = True,
+    ):
         def decorator(
             handler: Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.aggre.deals.v3.api.pb@{interval}@{symbol}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
@@ -199,90 +211,109 @@ class WSConnection:
             "Week1",
             "Month1",
         ],
+        handle_as_task: bool = True,
     ):
         def decorator(
             handler: Callable[[PublicSpotKlineMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicSpotKlineMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.kline.v3.api.pb@{symbol}@{interval}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
-    def aggre_depth(self, symbol: str, interval: Literal["100ms", "10ms"] = "100ms"):
+    def aggre_depth(
+        self,
+        symbol: str,
+        interval: Literal["100ms", "10ms"] = "100ms",
+        handle_as_task: bool = True,
+    ):
         def decorator(
             handler: Callable[[PublicAggreDepthsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicAggreDepthsMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.aggre.depth.v3.api.pb@{interval}@{symbol}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
-    def increase_depth_batch(self, symbol: str):
+    def increase_depth_batch(self, symbol: str, handle_as_task: bool = True):
         def decorator(
             handler: Callable[
                 [PublicIncreaseDepthsBatchMessage], Coroutine[Any, Any, None]
             ],
         ) -> Callable[[PublicIncreaseDepthsBatchMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.increase.depth.batch.v3.api.pb@{symbol}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
-    def limit_depth(self, symbol: str, depth: Literal["5", "10", "20"]):
+    def limit_depth(
+        self, symbol: str, depth: Literal["5", "10", "20"], handle_as_task: bool = True
+    ):
         def decorator(
             handler: Callable[[PublicLimitDepthsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicLimitDepthsMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.limit.depth.v3.api.pb@{symbol}@{depth}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
-    def aggre_book_ticker(self, symbol: str, interval: Literal["100ms", "10ms"]):
+    def aggre_book_ticker(
+        self,
+        symbol: str,
+        interval: Literal["100ms", "10ms"],
+        handle_as_task: bool = True,
+    ):
         def decorator(
             handler: Callable[
                 [PublicAggreBookTickerMessage], Coroutine[Any, Any, None]
             ],
         ) -> Callable[[PublicAggreBookTickerMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.aggre.bookTicker.v3.api.pb@{interval}@{symbol}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
-    def book_ticker_batch(self, symbol: str):
+    def book_ticker_batch(self, symbol: str, handle_as_task: bool = True):
         def decorator(
             handler: Callable[
                 [PublicBookTickersBatchMessage], Coroutine[Any, Any, None]
             ],
         ) -> Callable[[PublicBookTickersBatchMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.bookTicker.batch.v3.api.pb@{symbol}"
-            return self._register_channel_handler(channel, handler)
+            return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
 
-    def account_balance(self):
+    def account_balance(self, handle_as_task: bool = True):
         def decorator(
             handler: Callable[[PrivateAccountMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PrivateAccountMessage], Coroutine[Any, Any, None]]:
             channel = "spot@private.account.v3.api.pb"
-            return self._register_channel_handler(channel, handler, private=True)
+            return self._register_channel_handler(
+                channel, handler, private=True, handle_as_task=handle_as_task
+            )
 
         return decorator
 
-    def private_deals(self):
+    def private_deals(self, handle_as_task: bool = True):
         def decorator(
             handler: Callable[[PrivateDealsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PrivateDealsMessage], Coroutine[Any, Any, None]]:
             channel = "spot@private.deals.v3.api.pb"
-            return self._register_channel_handler(channel, handler, private=True)
+            return self._register_channel_handler(
+                channel, handler, private=True, handle_as_task=handle_as_task
+            )
 
         return decorator
 
-    def private_orders(self):
+    def private_orders(self, handle_as_task: bool = True):
         def decorator(
             handler: Callable[[PrivateOrdersMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PrivateOrdersMessage], Coroutine[Any, Any, None]]:
             channel = "spot@private.orders.v3.api.pb"
-            return self._register_channel_handler(channel, handler, private=True)
+            return self._register_channel_handler(
+                channel, handler, private=True, handle_as_task=handle_as_task
+            )
 
         return decorator
 
@@ -306,7 +337,11 @@ class WSConnection:
     ) -> None:
         """Trigger channel handlers in separate tasks."""
         for handler in self._stream_handlers.get(channel, []):
-            self._add_task(handler(message))
+            handle_update = handler(message)
+            if handler.handle_as_task:
+                self._add_task(handle_update)
+            else:
+                await handle_update
 
     def is_sub_message(self, message: dict) -> bool:
         if messages := message.get("msg"):
