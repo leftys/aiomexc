@@ -26,33 +26,21 @@ from aiomexc.exceptions import (
     MexcWsConnectionClosed,
 )
 
-from .proto import (
-    PushMessage,
-    PublicDealsMessage,
-    PublicIncreaseDepthsMessage,
-    PublicLimitDepthsMessage,
-    PrivateOrdersMessage,
-    PublicBookTickerMessage,
-    PrivateDealsMessage,
-    PrivateAccountMessage,
-    PublicSpotKlineMessage,
-    PublicMiniTickerMessage,
-    PublicMiniTickersMessage,
-    PublicBookTickersBatchMessage,
-    PublicIncreaseDepthsBatchMessage,
-    PublicAggreDepthsMessage,
-    PublicAggreDealsMessage,
-    PublicAggreBookTickerMessage,
-)
+from .proto import PushMessage
 
 from .session.base import BaseWsSession, EventMessage, ConnectionMessage
 from .credentials import WSCredentials
 from .dispatcher import EventType, EventDispatcher
-from .messages import ListenKeyExtendedMessage
+from .messages import (
+    ListenKeyExtendedMessage,
+    PublicAggreDealsMessage,
+    BaseMessage,
+    PrivateOrdersMessage,
+)
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
+T = TypeVar("T", bound=BaseMessage)
 
 
 class StreamHandler(Generic[T]):
@@ -69,28 +57,14 @@ class StreamHandler(Generic[T]):
     async def __call__(self, msg: PushMessage) -> None:
         if msg.message is None:
             return
-        if not isinstance(msg.message, self.message_type):
-            return
-        await self.handler(msg.message)
+
+        await self.handler(self.message_type.from_proto(msg))
 
 
 class WSConnection:
     STREAM_TYPES = {
-        "spot@private.deals.v3.api.pb": PrivateDealsMessage,
-        "spot@private.orders.v3.api.pb": PrivateOrdersMessage,
-        "spot@private.account.v3.api.pb": PrivateAccountMessage,
-        "spot@public.deals.v3.api.pb": PublicDealsMessage,
-        "spot@public.increase.depths.v3.api.pb": PublicIncreaseDepthsMessage,
-        "spot@public.limit.depths.v3.api.pb": PublicLimitDepthsMessage,
-        "spot@public.book.ticker.v3.api.pb": PublicBookTickerMessage,
-        "spot@public.kline.v3.api.pb": PublicSpotKlineMessage,
-        "spot@public.mini.ticker.v3.api.pb": PublicMiniTickerMessage,
-        "spot@public.mini.tickers.v3.api.pb": PublicMiniTickersMessage,
-        "spot@public.book.tickers.batch.v3.api.pb": PublicBookTickersBatchMessage,
-        "spot@public.increase.depths.batch.v3.api.pb": PublicIncreaseDepthsBatchMessage,
-        "spot@public.aggre.depths.v3.api.pb": PublicAggreDepthsMessage,
         "spot@public.aggre.deals.v3.api.pb": PublicAggreDealsMessage,
-        "spot@public.aggre.bookTicker.v3.api.pb": PublicAggreBookTickerMessage,
+        "spot@private.orders.v3.api.pb": PrivateOrdersMessage,
     }
 
     def __init__(
@@ -151,7 +125,7 @@ class WSConnection:
     def on_pong(self, handler: Callable[[], Coroutine[Any, Any, None]]) -> None:
         self._events[EventType.PONG].add(handler)
 
-    def _get_message_type(self, stream: str) -> Type | None:
+    def _get_message_type(self, stream: str) -> Type[BaseMessage] | None:
         """Get the message type for a given stream."""
         for pattern, msg_type in self.STREAM_TYPES.items():
             if pattern in stream:
@@ -178,7 +152,7 @@ class WSConnection:
 
         self._streams.append(stream)
         self._stream_handlers[stream].append(
-            StreamHandler(handler, message_type, handle_as_task)
+            StreamHandler(handler, cast(Type[T], message_type), handle_as_task)
         )
         return handler
 
@@ -193,116 +167,6 @@ class WSConnection:
         ) -> Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.aggre.deals.v3.api.pb@{interval}@{symbol}"
             return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def kline(
-        self,
-        symbol: str,
-        interval: Literal[
-            "Min1",
-            "Min5",
-            "Min15",
-            "Min30",
-            "Min60",
-            "Hour4",
-            "Hour8",
-            "Day1",
-            "Week1",
-            "Month1",
-        ],
-        handle_as_task: bool = True,
-    ):
-        def decorator(
-            handler: Callable[[PublicSpotKlineMessage], Coroutine[Any, Any, None]],
-        ) -> Callable[[PublicSpotKlineMessage], Coroutine[Any, Any, None]]:
-            channel = f"spot@public.kline.v3.api.pb@{symbol}@{interval}"
-            return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def aggre_depth(
-        self,
-        symbol: str,
-        interval: Literal["100ms", "10ms"] = "100ms",
-        handle_as_task: bool = True,
-    ):
-        def decorator(
-            handler: Callable[[PublicAggreDepthsMessage], Coroutine[Any, Any, None]],
-        ) -> Callable[[PublicAggreDepthsMessage], Coroutine[Any, Any, None]]:
-            channel = f"spot@public.aggre.depth.v3.api.pb@{interval}@{symbol}"
-            return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def increase_depth_batch(self, symbol: str, handle_as_task: bool = True):
-        def decorator(
-            handler: Callable[
-                [PublicIncreaseDepthsBatchMessage], Coroutine[Any, Any, None]
-            ],
-        ) -> Callable[[PublicIncreaseDepthsBatchMessage], Coroutine[Any, Any, None]]:
-            channel = f"spot@public.increase.depth.batch.v3.api.pb@{symbol}"
-            return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def limit_depth(
-        self, symbol: str, depth: Literal["5", "10", "20"], handle_as_task: bool = True
-    ):
-        def decorator(
-            handler: Callable[[PublicLimitDepthsMessage], Coroutine[Any, Any, None]],
-        ) -> Callable[[PublicLimitDepthsMessage], Coroutine[Any, Any, None]]:
-            channel = f"spot@public.limit.depth.v3.api.pb@{symbol}@{depth}"
-            return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def aggre_book_ticker(
-        self,
-        symbol: str,
-        interval: Literal["100ms", "10ms"],
-        handle_as_task: bool = True,
-    ):
-        def decorator(
-            handler: Callable[
-                [PublicAggreBookTickerMessage], Coroutine[Any, Any, None]
-            ],
-        ) -> Callable[[PublicAggreBookTickerMessage], Coroutine[Any, Any, None]]:
-            channel = f"spot@public.aggre.bookTicker.v3.api.pb@{interval}@{symbol}"
-            return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def book_ticker_batch(self, symbol: str, handle_as_task: bool = True):
-        def decorator(
-            handler: Callable[
-                [PublicBookTickersBatchMessage], Coroutine[Any, Any, None]
-            ],
-        ) -> Callable[[PublicBookTickersBatchMessage], Coroutine[Any, Any, None]]:
-            channel = f"spot@public.bookTicker.batch.v3.api.pb@{symbol}"
-            return self._register_channel_handler(channel, handler, handle_as_task)
-
-        return decorator
-
-    def account_balance(self, handle_as_task: bool = True):
-        def decorator(
-            handler: Callable[[PrivateAccountMessage], Coroutine[Any, Any, None]],
-        ) -> Callable[[PrivateAccountMessage], Coroutine[Any, Any, None]]:
-            channel = "spot@private.account.v3.api.pb"
-            return self._register_channel_handler(
-                channel, handler, private=True, handle_as_task=handle_as_task
-            )
-
-        return decorator
-
-    def private_deals(self, handle_as_task: bool = True):
-        def decorator(
-            handler: Callable[[PrivateDealsMessage], Coroutine[Any, Any, None]],
-        ) -> Callable[[PrivateDealsMessage], Coroutine[Any, Any, None]]:
-            channel = "spot@private.deals.v3.api.pb"
-            return self._register_channel_handler(
-                channel, handler, private=True, handle_as_task=handle_as_task
-            )
 
         return decorator
 
@@ -343,6 +207,8 @@ class WSConnection:
             else:
                 await handle_update
 
+        await self._trigger_event(EventType.MESSAGE, message)
+
     def is_sub_message(self, message: dict) -> bool:
         if messages := message.get("msg"):
             return all(param in self._streams for param in messages.split(","))
@@ -351,18 +217,18 @@ class WSConnection:
     def is_pong_message(self, message: dict) -> bool:
         return message.get("msg") == "PONG"
 
-    async def send_keepalive_ping(self):
+    async def keepalive_ping(self):
         """
         Function to send keepalive ping every 30 seconds
         30 seconds is recommended by MEXC API docs: https://mexcdevelop.github.io/apidocs/spot_v3_en/#websocket-market-streams
         """
-        while True:
+        while not self._shutdown_event.is_set():
             await asyncio.sleep(30)
             await self._session.ping()
             await self._trigger_event(EventType.PING)
             logger.debug("Keepalive ping sent")
 
-    async def keepalivate_extend_listen_key(self):
+    async def keepalive_extend_listen_key(self):
         """
         Function to update listen key dynamically based on its expiration time
         We update the key 5 minutes before it expires to avoid connection issues
@@ -370,7 +236,7 @@ class WSConnection:
         if self._credentials is None or self._credentials.listen_key is None:
             raise MexcWsNoCredentialsProvided()
 
-        while True:
+        while not self._shutdown_event.is_set():
             # Calculate time until expiration minus 5 minutes buffer
             now = int(time.time())
             if self._credentials.expires_at is None:
@@ -439,10 +305,10 @@ class WSConnection:
             await self._session.connect(url)
             await self._session.subscribe(self._streams)
 
-            self._ping_task = asyncio.create_task(self.send_keepalive_ping())
+            self._ping_task = asyncio.create_task(self.keepalive_ping())
             if self._is_private:
                 self._listen_key_update_task = asyncio.create_task(
-                    self.keepalivate_extend_listen_key()
+                    self.keepalive_extend_listen_key()
                 )
 
             await self._trigger_event(EventType.CONNECT)
