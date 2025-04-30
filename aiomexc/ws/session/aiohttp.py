@@ -1,4 +1,9 @@
-from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
+from aiohttp import (
+    ClientSession,
+    ClientWebSocketResponse,
+    WSMsgType,
+    WSServerHandshakeError,
+)
 
 from aiomexc.ws.messages import PING, subscription
 from aiomexc.exceptions import (
@@ -24,11 +29,17 @@ class AiohttpWsSession(BaseWsSession):
         if self.ws_session is not None and not self.ws_session.closed:
             return
 
-        self.ws_session = await self.http_session.ws_connect(
-            url,
-            autoping=False,
-            autoclose=True,
-        )
+        while True:
+            try:
+                self.ws_session = await self.http_session.ws_connect(
+                    url,
+                    autoping=False,
+                    autoclose=True,
+                )
+                break
+            except WSServerHandshakeError as e:
+                if e.status >= 500:
+                    continue
 
     async def subscribe(self, streams: list[str]) -> None:
         if self.ws_session is None or self.ws_session.closed:
