@@ -36,6 +36,7 @@ from .messages import (
     PublicAggreDealsMessage,
     BaseMessage,
     PrivateOrdersMessage,
+    PrivateDealsMessage,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class WSConnection:
     STREAM_TYPES = {
         "spot@public.aggre.deals.v3.api.pb": PublicAggreDealsMessage,
         "spot@private.orders.v3.api.pb": PrivateOrdersMessage,
+        "spot@private.deals.v3.api.pb": PrivateDealsMessage,
     }
 
     def __init__(
@@ -175,6 +177,17 @@ class WSConnection:
             handler: Callable[[PrivateOrdersMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PrivateOrdersMessage], Coroutine[Any, Any, None]]:
             channel = "spot@private.orders.v3.api.pb"
+            return self._register_channel_handler(
+                channel, handler, private=True, handle_as_task=handle_as_task
+            )
+
+        return decorator
+
+    def private_deals(self, handle_as_task: bool = True):
+        def decorator(
+            handler: Callable[[PrivateDealsMessage], Coroutine[Any, Any, None]],
+        ) -> Callable[[PrivateDealsMessage], Coroutine[Any, Any, None]]:
+            channel = "spot@private.deals.v3.api.pb"
             return self._register_channel_handler(
                 channel, handler, private=True, handle_as_task=handle_as_task
             )
