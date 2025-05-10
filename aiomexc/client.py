@@ -110,10 +110,10 @@ class MexcClient:
         symbol: str,
         side: OrderSide,
         type: OrderType,
-        quantity: Decimal | None,
-        quote_order_qty: Decimal | None,
-        price: Decimal | None,
-        new_client_order_id: str | None,
+        quantity: Decimal | None = None,
+        quote_order_qty: Decimal | None = None,
+        price: Decimal | None = None,
+        new_client_order_id: str | None = None,
         credentials: Credentials | None = None,
     ) -> CreateOrderType:
         return await self(
