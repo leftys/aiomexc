@@ -81,6 +81,12 @@ class MexcApiInvalidListenKey(MexcAPIError):
     """
 
 
+class MexcApiSignatureInvalid(MexcAPIError):
+    """
+    Exception raised when signature is invalid.
+    """
+
+
 class ClientDecodeError(MexcClientError):
     """
     Exception raised when client can't decode response. (Malformed response, etc.)

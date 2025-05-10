@@ -19,6 +19,7 @@ from aiomexc.exceptions import (
     MexcAPIError,
     MexcApiInvalidListenKey,
     MexcApiIpNotAllowed,
+    MexcApiSignatureInvalid,
 )
 from aiomexc.retort import _retort
 
@@ -55,6 +56,7 @@ class BaseSession(ABC):
             402: MexcApiKeyMissing,  # API-Key missing, not sure
             730708: MexcApiInvalidListenKey,  # Invalid listen key
             700006: MexcApiIpNotAllowed,  # IP [x] not in the ip white list
+            700002: MexcApiSignatureInvalid,  # Signature for this request is not valid.
         }
 
     def encrypt_params(self, secret_key: str, params: dict | None = None) -> dict:
