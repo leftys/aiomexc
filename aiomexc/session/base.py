@@ -20,6 +20,12 @@ from aiomexc.exceptions import (
     MexcApiInvalidListenKey,
     MexcApiIpNotAllowed,
     MexcApiSignatureInvalid,
+    MexcApiOpenOrdersTooMany,
+    MexcApiInsufficientRights,
+    MexcApiRateLimitExceeded,
+    MexcApiRequireKyc,
+    MexcApiOversold,
+    MexcApiInsufficientBalance,
 )
 from aiomexc.retort import _retort
 
@@ -57,6 +63,13 @@ class BaseSession(ABC):
             730708: MexcApiInvalidListenKey,  # Invalid listen key
             700006: MexcApiIpNotAllowed,  # IP [x] not in the ip white list
             700002: MexcApiSignatureInvalid,  # Signature for this request is not valid.
+            700003: MexcApiOpenOrdersTooMany,  # Open orders too many
+            700007: MexcApiInsufficientRights,  # Insufficient rights with this API key
+            429: MexcApiRateLimitExceeded,  # Rate limit exceeded
+            200010: MexcApiRequireKyc,  # User requires KYC
+            200006: MexcApiRequireKyc,  # User requires KYC
+            30005: MexcApiOversold,  # Order is oversold
+            30004: MexcApiInsufficientBalance,  # Insufficient balance
         }
 
     def encrypt_params(self, secret_key: str, params: dict | None = None) -> dict:

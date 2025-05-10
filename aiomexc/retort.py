@@ -3,12 +3,20 @@ from adaptix import NameStyle, Retort, name_mapping
 from aiomexc.methods import (
     MexcMethod,
     QueryOrder,
+    CreateOrder,
     CreateListenKey,
     GetListenKeys,
     ExtendListenKey,
     DeleteListenKey,
 )
-from aiomexc.types import Order, AccountInformation, TickerPrice, ListenKey, ListenKeys
+from aiomexc.types import (
+    Order,
+    AccountInformation,
+    TickerPrice,
+    ListenKey,
+    ListenKeys,
+    CreateOrder as CreateOrderType,
+)
 
 type_recipes = [
     name_mapping(
@@ -21,43 +29,50 @@ type_recipes = [
         TickerPrice,
         ListenKey,
         ListenKeys,
+        CreateOrderType,
     ]
 ]
 
+method_recipes = [
+    name_mapping(
+        MexcMethod,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+    name_mapping(
+        QueryOrder,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+    name_mapping(
+        CreateListenKey,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+    name_mapping(
+        GetListenKeys,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+    name_mapping(
+        ExtendListenKey,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+    name_mapping(
+        DeleteListenKey,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+    name_mapping(
+        CreateOrder,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    ),
+]
+
 _retort = Retort(
-    recipe=[
-        name_mapping(
-            MexcMethod,
-            name_style=NameStyle.CAMEL,
-            omit_default=True,
-        ),
-        name_mapping(
-            QueryOrder,
-            name_style=NameStyle.CAMEL,
-            omit_default=True,
-        ),
-        name_mapping(
-            CreateListenKey,
-            name_style=NameStyle.CAMEL,
-            omit_default=True,
-        ),
-        name_mapping(
-            GetListenKeys,
-            name_style=NameStyle.CAMEL,
-            omit_default=True,
-        ),
-        name_mapping(
-            ExtendListenKey,
-            name_style=NameStyle.CAMEL,
-            omit_default=True,
-        ),
-        name_mapping(
-            DeleteListenKey,
-            name_style=NameStyle.CAMEL,
-            omit_default=True,
-        ),
-    ]
-    + type_recipes,
+    recipe=method_recipes + type_recipes,
 )
 
 __all__ = ["_retort"]

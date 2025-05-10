@@ -23,3 +23,15 @@ class Order:
     update_time: int | None
     is_working: bool
     orig_quote_order_qty: Decimal | None
+
+
+@dataclass
+class CreateOrder:
+    symbol: str
+    order_id: str
+    order_list_id: int
+    price: Decimal
+    orig_qty: Decimal
+    type: OrderType
+    side: OrderSide
+    transact_time: int

@@ -87,6 +87,42 @@ class MexcApiSignatureInvalid(MexcAPIError):
     """
 
 
+class MexcApiOpenOrdersTooMany(MexcAPIError):
+    """
+    Exception raised when open orders are too many.
+    """
+
+
+class MexcApiInsufficientRights(MexcAPIError):
+    """
+    Exception raised when user has insufficient rights.
+    """
+
+
+class MexcApiRateLimitExceeded(MexcAPIError):
+    """
+    Exception raised when rate limit is exceeded.
+    """
+
+
+class MexcApiRequireKyc(MexcAPIError):
+    """
+    Exception raised when user requires KYC.
+    """
+
+
+class MexcApiOversold(MexcAPIError):
+    """
+    Exception raised when order is oversold.
+    """
+
+
+class MexcApiInsufficientBalance(MexcAPIError):
+    """
+    Exception raised when user has insufficient balance.
+    """
+
+
 class ClientDecodeError(MexcClientError):
     """
     Exception raised when client can't decode response. (Malformed response, etc.)
