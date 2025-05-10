@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from aiomexc.methods import (
     GetTickerPrice,
     GetAccountInformation,
@@ -8,7 +10,9 @@ from aiomexc.methods import (
     ExtendListenKey,
     DeleteListenKey,
     GetOpenOrders,
+    CreateOrder,
 )
+from aiomexc.enums import OrderSide, OrderType
 from aiomexc.types import (
     TickerPrice,
     AccountInformation,
@@ -16,6 +20,7 @@ from aiomexc.types import (
     MexcType,
     ListenKey,
     ListenKeys,
+    CreateOrder as CreateOrderType,
 )
 
 from .session.base import BaseSession, Credentials
@@ -99,3 +104,27 @@ class MexcClient:
         self, symbol: str, credentials: Credentials | None = None
     ) -> list[Order]:
         return await self(GetOpenOrders(symbol=symbol), credentials=credentials)
+
+    async def create_order(
+        self,
+        symbol: str,
+        side: OrderSide,
+        type: OrderType,
+        quantity: Decimal | None,
+        quote_order_qty: Decimal | None,
+        price: Decimal | None,
+        new_client_order_id: str | None,
+        credentials: Credentials | None = None,
+    ) -> CreateOrderType:
+        return await self(
+            CreateOrder(
+                symbol=symbol,
+                side=side,
+                type=type,
+                quantity=quantity,
+                quote_order_qty=quote_order_qty,
+                price=price,
+                new_client_order_id=new_client_order_id,
+            ),
+            credentials=credentials,
+        )
