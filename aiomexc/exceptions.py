@@ -69,6 +69,12 @@ class MexcApiKeyMissing(MexcAPIError):
     """
 
 
+class MexcApiIpNotAllowed(MexcAPIError):
+    """
+    Exception raised when API key is not allowed to access the IP.
+    """
+
+
 class MexcApiInvalidListenKey(MexcAPIError):
     """
     Exception raised when listen key is invalid.
