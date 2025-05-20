@@ -40,17 +40,7 @@ class MexcClient:
     async def __call__(
         self, method: MexcMethod[MexcType], credentials: Credentials | None = None
     ) -> MexcType:
-        if method.__requires_auth__:
-            # Use request-specific credentials if provided, otherwise fall back to session credentials
-            credentials = credentials or self.credentials
-            if credentials is None:
-                raise ValueError(
-                    f"Credentials are required for {method.__api_method__!r} method"
-                )
-
-            return await self.session.make_signed_request(method, credentials)
-        else:
-            return await self.session.make_request(method)
+        return await self.session.request(method, credentials or self.credentials)
 
     async def get_ticker_price(self, symbol: str) -> TickerPrice:
         return await self(GetTickerPrice(symbol=symbol))

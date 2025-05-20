@@ -26,6 +26,7 @@ from aiomexc.exceptions import (
     MexcApiRequireKyc,
     MexcApiOversold,
     MexcApiInsufficientBalance,
+    MexcApiCredentialsMissing,
 )
 from aiomexc.retort import _retort
 
@@ -150,6 +151,29 @@ class BaseSession(ABC):
         :raise MexcAPIError:
         """
         pass
+
+    async def request(
+        self,
+        method: MexcMethod[MexcType],
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
+    ) -> MexcType:  # pragma: no cover
+        """
+        Make request to Mexc API
+
+        :param method: Method instance
+        :param credentials: Optional credentials to use for this specific request
+        :param timeout: Request timeout
+        :return:
+        :raise MexcAPIError:
+        """
+        if method.__requires_auth__:
+            if credentials is None:
+                raise MexcApiCredentialsMissing(method)
+
+            return await self.make_signed_request(method, credentials, timeout)
+        else:
+            return await self.make_request(method, timeout)
 
     @abstractmethod
     async def close(self) -> None:  # pragma: no cover

@@ -143,6 +143,17 @@ class ClientDecodeError(MexcClientError):
         )
 
 
+class MexcApiCredentialsMissing(DetailedMexcClientError):
+    """
+    Exception raised when credentials are missing.
+    """
+
+    def __init__(self, method: MexcMethod[MexcType]):
+        super().__init__(
+            f"Credentials are missing for {method.__api_method__!r} method"
+        )
+
+
 class MexcWsStreamsLimit(MexcClientError):
     """
     Exception raised when too many streams are subscribed.
