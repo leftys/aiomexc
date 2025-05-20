@@ -134,6 +134,23 @@ class WSConnection:
                 return msg_type
         return None
 
+    def _cancel_service_tasks(self):
+        if self._ping_task:
+            self._ping_task.cancel()
+        if self._listen_key_update_task:
+            self._listen_key_update_task.cancel()
+
+    def _start_service_tasks(self):
+        self._ping_task = asyncio.create_task(self.keepalive_ping())
+        if self._is_private:
+            self._listen_key_update_task = asyncio.create_task(
+                self.keepalive_extend_listen_key()
+            )
+
+    def _restart_service_tasks(self):
+        self._cancel_service_tasks()
+        self._start_service_tasks()
+
     def _register_channel_handler(
         self,
         stream: str,
@@ -318,11 +335,7 @@ class WSConnection:
             await self._session.connect(url)
             await self._session.subscribe(self._streams)
 
-            self._ping_task = asyncio.create_task(self.keepalive_ping())
-            if self._is_private:
-                self._listen_key_update_task = asyncio.create_task(
-                    self.keepalive_extend_listen_key()
-                )
+            self._restart_service_tasks()
 
             await self._trigger_event(EventType.CONNECT)
         except Exception as e:
