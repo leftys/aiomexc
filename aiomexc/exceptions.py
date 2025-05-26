@@ -45,6 +45,14 @@ class MexcAPIError(DetailedMexcClientError):
         return f"{self.label} - {original_message}"
 
 
+class MexcNetworkError(MexcAPIError):
+    """
+    Exception raised when a network error occurs.
+    """
+
+    label: str = "HTTP Client says"
+
+
 class MexcBadRequest(MexcAPIError):
     """
     Exception raised when request is malformed.
@@ -154,16 +162,24 @@ class MexcApiCredentialsMissing(DetailedMexcClientError):
         )
 
 
-class MexcWsStreamsLimit(MexcClientError):
+class MexcWsStreamsLimit(DetailedMexcClientError):
     """
     Exception raised when too many streams are subscribed.
     """
 
+    def __init__(self, stream_count: int, max_streams: int = 30):
+        super().__init__(
+            f"You try to subscribe to {stream_count} streams, but the maximum is {max_streams}."
+        )
 
-class MexcWsNoStreamsProvided(MexcClientError):
+
+class MexcWsNoStreamsProvided(DetailedMexcClientError):
     """
     Exception raised when no streams are provided.
     """
+
+    def __init__(self):
+        super().__init__("At least one stream must be provided to start listening.")
 
 
 class MexcWsNoCredentialsProvided(MexcClientError):
@@ -172,52 +188,48 @@ class MexcWsNoCredentialsProvided(MexcClientError):
     """
 
 
-class MexcWsInvalidStream(MexcClientError):
+class MexcWsInvalidStream(DetailedMexcClientError):
     """
     Exception raised when an invalid stream is provided.
     """
 
     def __init__(self, stream: str):
-        self.stream = stream
-
-    def __str__(self) -> str:
-        return f"Invalid stream: {self.stream}"
+        super().__init__(f"You try to subscribe to an invalid stream: {stream}")
 
 
-class MexcWsPrivateStream(MexcClientError):
+class MexcWsPrivateStream(DetailedMexcClientError):
     """
     Exception raised when a private stream is provided to a public connection.
     """
 
     def __init__(self, stream: str):
-        self.stream = stream
+        super().__init__(
+            f"You try to subscribe to a private stream without authentication: {stream}"
+        )
 
-    def __str__(self) -> str:
-        return f"Private stream: {self.stream}"
 
-
-class MexcWsConnectionClosed(MexcClientError):
+class MexcWsConnectionClosed(DetailedMexcClientError):
     """
     Exception raised when the connection is closed.
     """
 
-    def __str__(self) -> str:
-        return "Connection closed"
+    def __init__(self):
+        super().__init__("Connection closed")
 
 
-class MexcWsConnectionError(MexcClientError):
+class MexcWsConnectionError(DetailedMexcClientError):
     """
     Exception raised when the connection is not established.
     """
 
-    def __str__(self) -> str:
-        return "Connection error"
+    def __init__(self):
+        super().__init__("Connection error")
 
 
-class MexcWsConnectionNotEstablished(MexcClientError):
+class MexcWsConnectionNotEstablished(DetailedMexcClientError):
     """
     Exception raised when the connection is not established.
     """
 
-    def __str__(self) -> str:
-        return "Connection not established"
+    def __init__(self):
+        super().__init__("Connection not established")

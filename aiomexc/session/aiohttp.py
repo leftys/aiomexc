@@ -5,7 +5,7 @@ from typing import Any, Dict, Type, cast
 from urllib.parse import urljoin
 import certifi
 
-from aiohttp import ClientSession, TCPConnector, ClientTimeout
+from aiohttp import ClientSession, TCPConnector, ClientTimeout, ClientError
 from aiohttp.hdrs import USER_AGENT
 from aiohttp.http import SERVER_SOFTWARE
 
@@ -14,6 +14,7 @@ from aiomexc.types import MexcType
 from aiomexc.__meta__ import __version__
 from aiomexc import loggers
 from aiomexc.retort import _retort
+from aiomexc.exceptions import MexcNetworkError
 
 from .base import BaseSession, Credentials
 
@@ -43,7 +44,7 @@ class AiohttpSession(BaseSession):
             self._session = ClientSession(
                 connector=self._connector_type(**self._connector_init),
                 headers={
-                    USER_AGENT: f"{SERVER_SOFTWARE} mexc-api/{__version__}",
+                    USER_AGENT: f"{SERVER_SOFTWARE} aiomexc/{__version__}",
                 },
             )
             self._should_reset_connector = False
@@ -100,7 +101,9 @@ class AiohttpSession(BaseSession):
                     "result": raw_result if api_code == 200 else None,
                 }  # this is needed, because mexc api don't have stable response structure
         except asyncio.TimeoutError:
-            raise
+            raise MexcNetworkError(method=method, message="Request timeout error")
+        except ClientError as e:
+            raise MexcNetworkError(method=method, message=f"{type(e).__name__}: {e}")
 
         loggers.client.debug("Response: %s", wrapped_result)
         response = self.check_response(method, api_code, wrapped_result)

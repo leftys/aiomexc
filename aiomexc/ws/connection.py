@@ -159,8 +159,10 @@ class WSConnection:
         handle_as_task: bool = True,
     ) -> Callable[[T], Coroutine[Any, Any, None]]:
         """Register a handler for a specific channel and add the channel to streams."""
-        if len(self._streams) + 1 >= 30:
-            raise MexcWsStreamsLimit()
+        if len(self._streams) + 1 > 30:
+            raise MexcWsStreamsLimit(
+                stream_count=len(self._streams) + 1, max_streams=30
+            )
 
         if private and not self._is_private:
             raise MexcWsPrivateStream(stream=stream)
