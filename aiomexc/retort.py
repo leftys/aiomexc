@@ -35,40 +35,19 @@ type_recipes = [
 
 method_recipes = [
     name_mapping(
+        mexc_method,
+        name_style=NameStyle.CAMEL,
+        omit_default=True,
+    )
+    for mexc_method in [
         MexcMethod,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
-    name_mapping(
         QueryOrder,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
-    name_mapping(
-        CreateListenKey,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
-    name_mapping(
-        GetListenKeys,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
-    name_mapping(
-        ExtendListenKey,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
-    name_mapping(
-        DeleteListenKey,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
-    name_mapping(
         CreateOrder,
-        name_style=NameStyle.CAMEL,
-        omit_default=True,
-    ),
+        CreateListenKey,
+        GetListenKeys,
+        ExtendListenKey,
+        DeleteListenKey,
+    ]
 ]
 
 _retort = Retort(

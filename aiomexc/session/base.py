@@ -9,6 +9,7 @@ from typing import Callable, Any, Final, cast
 from dataclasses import dataclass
 
 from http import HTTPStatus
+from adaptix.load_error import LoadError
 from aiomexc.methods import MexcMethod
 from aiomexc.types import MexcResult, MexcType
 from aiomexc.exceptions import (
@@ -27,12 +28,14 @@ from aiomexc.exceptions import (
     MexcApiOversold,
     MexcApiInsufficientBalance,
     MexcApiCredentialsMissing,
+    ClientDecodeError,
 )
 from aiomexc.retort import _retort
 
 _JsonLoads = Callable[..., Any]
 _JsonDumps = Callable[..., str]
 DEFAULT_TIMEOUT: Final[float] = 60.0
+BASE_URL = "https://api.mexc.com/api/v3/"
 
 
 @dataclass
@@ -48,11 +51,13 @@ class BaseSession(ABC):
         json_dumps: _JsonDumps = json.dumps,
         timeout: float = DEFAULT_TIMEOUT,
         recv_window: int = 30000,
+        base_url: str = BASE_URL,
     ):
         self.json_loads = json_loads
         self.json_dumps = json_dumps
         self.timeout = timeout
         self.recv_window = recv_window
+        self._base_url = base_url
 
         self._map_error_code_to_exception = {
             700004: MexcBadRequest,  # Param 'origClientOrderId' or 'orderId' must be sent, but both were empty/null
@@ -96,17 +101,49 @@ class BaseSession(ABC):
         return params
 
     def check_response(
-        self, method: MexcMethod[MexcType], status_code: int, json_data: dict
+        self, method: MexcMethod[MexcType], status_code: int, content: str
     ) -> MexcResult[MexcType]:
-        response_type = MexcResult[method.__returning__]
-        response = _retort.load(json_data, response_type)
+        try:
+            json_data = self.json_loads(content)
+        except Exception as e:
+            raise ClientDecodeError(
+                message="Failed to decode object",
+                original=e,
+                data=content,
+            )
+
+        if isinstance(
+            json_data, dict
+        ):  # we can trust the api that the error will not be returned in the list
+            api_code = int(json_data.get("code", 200))
+            msg = json_data.get("msg")
+        else:
+            api_code = 200
+            msg = None
+
+        wrapped_result = {
+            "ok": status_code < 400,
+            "msg": msg,
+            "code": api_code,
+            "result": json_data if api_code == 200 else None,
+        }  # this is needed, because mexc api don't have stable response structure
+
+        try:
+            response_type = MexcResult[method.__returning__]
+            response = _retort.load(wrapped_result, response_type)
+        except LoadError as e:
+            raise ClientDecodeError(
+                message="Failed to deserialize object",
+                original=e,
+                data=wrapped_result,
+            )
 
         if HTTPStatus.OK <= status_code <= HTTPStatus.IM_USED and response.ok:
             return response
 
         message = cast(str, response.msg)
 
-        if exception_cls := self._map_error_code_to_exception.get(status_code):
+        if exception_cls := self._map_error_code_to_exception.get(api_code):
             raise exception_cls(
                 method=method,
                 message=message,

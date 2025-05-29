@@ -31,7 +31,6 @@ class AiohttpSession(BaseSession):
             "ttl_dns_cache": 3600,  # Workaround for https://github.com/aiogram/aiogram/issues/1500
         }
         self._should_reset_connector = True  # flag determines connector state
-        self._base_url = "https://api.mexc.com/api/v3/"
         self._headers = {
             "Content-Type": "application/json",
         }
@@ -83,30 +82,16 @@ class AiohttpSession(BaseSession):
                     total=self.timeout if timeout is None else timeout
                 ),
             ) as resp:
-                raw_result = await resp.json()
-
-                if isinstance(
-                    raw_result, dict
-                ):  # we can trust the api that the error will not be returned in the list
-                    api_code = int(raw_result.get("code", 200))
-                    msg = raw_result.get("msg")
-                else:
-                    api_code = 200
-                    msg = None
-
-                wrapped_result = {
-                    "ok": resp.ok,
-                    "msg": msg,
-                    "code": api_code,
-                    "result": raw_result if api_code == 200 else None,
-                }  # this is needed, because mexc api don't have stable response structure
+                raw_result = await resp.text()
         except asyncio.TimeoutError:
             raise MexcNetworkError(method=method, message="Request timeout error")
         except ClientError as e:
             raise MexcNetworkError(method=method, message=f"{type(e).__name__}: {e}")
 
-        loggers.client.debug("Response: %s", wrapped_result)
-        response = self.check_response(method, api_code, wrapped_result)
+        loggers.client.debug("Response: %s", raw_result)
+        response = self.check_response(
+            method=method, status_code=resp.status, content=raw_result
+        )
         return cast(MexcType, response.result)
 
     async def make_signed_request(
