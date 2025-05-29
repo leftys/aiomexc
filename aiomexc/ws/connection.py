@@ -24,6 +24,7 @@ from aiomexc.exceptions import (
     MexcWsInvalidStream,
     MexcWsPrivateStream,
     MexcWsConnectionClosed,
+    MexcApiKeyInvalid,
 )
 
 from .proto import PushMessage
@@ -328,21 +329,17 @@ class WSConnection:
         if len(self._streams) == 0:
             raise MexcWsNoStreamsProvided()
 
-        try:
-            url = self._base_url
-            if self._is_private:
-                listen_key = await self.get_listen_key()
-                url = urljoin(url, f"?listenKey={listen_key}")
+        url = self._base_url
+        if self._is_private:
+            listen_key = await self.get_listen_key()
+            url = urljoin(url, f"?listenKey={listen_key}")
 
-            await self._session.connect(url)
-            await self._session.subscribe(self._streams)
+        await self._session.connect(url)
+        await self._session.subscribe(self._streams)
 
-            self._restart_service_tasks()
+        self._restart_service_tasks()
 
-            await self._trigger_event(EventType.CONNECT)
-        except Exception as e:
-            await self._trigger_event(EventType.ERROR, e)
-            raise
+        await self._trigger_event(EventType.CONNECT)
 
     async def _listen_updates(
         self,
@@ -359,6 +356,11 @@ class WSConnection:
                 logger.debug("Connection closed")
                 self._connected = False
                 continue
+
+            except MexcApiKeyInvalid:
+                logger.warning("Listen key is invalid, closing connection")
+                await self.close()
+                break
 
             except Exception as e:
                 logger.error("Error listening to updates: %s", e)
