@@ -3,7 +3,7 @@ import time
 import hmac
 import hashlib
 
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 from abc import ABC, abstractmethod
 from typing import Callable, Any, Final, cast
 from dataclasses import dataclass
@@ -27,8 +27,8 @@ from aiomexc.exceptions import (
     MexcApiRequireKyc,
     MexcApiOversold,
     MexcApiInsufficientBalance,
-    MexcApiCredentialsMissing,
     ClientDecodeError,
+    MexcApiCredentialsMissing,
 )
 from aiomexc.retort import _retort
 
@@ -76,6 +76,9 @@ class BaseSession(ABC):
             200006: MexcApiRequireKyc,  # User requires KYC
             30005: MexcApiOversold,  # Order is oversold
             30004: MexcApiInsufficientBalance,  # Insufficient balance
+        }
+        self._headers = {
+            "Content-Type": "application/json",
         }
 
     def encrypt_params(self, secret_key: str, params: dict | None = None) -> dict:
@@ -154,41 +157,24 @@ class BaseSession(ABC):
             message=message,
         )
 
-    @abstractmethod
-    async def make_signed_request(
+    def prepare_request(
         self,
         method: MexcMethod[MexcType],
-        credentials: Credentials,
-        timeout: float | None = None,
-    ) -> MexcType:  # pragma: no cover
-        """
-        Make signed request to Mexc API
+        credentials: Credentials | None = None,
+    ) -> tuple[str, dict, dict]:
+        params = _retort.dump(method)
+        headers = self._headers.copy()
 
-        :param method: Method instance
-        :param credentials: Credentials instance
-        :param timeout: Request timeout
-        :return:
-        :raise MexcAPIError:
-        """
-        pass
+        if method.__requires_auth__:
+            if credentials is None:
+                raise MexcApiCredentialsMissing(method)
+
+            params = self.encrypt_params(credentials.secret_key, params)
+            headers["X-MEXC-APIKEY"] = credentials.access_key
+
+        return urljoin(self._base_url, method.__api_method__), params, headers
 
     @abstractmethod
-    async def make_request(
-        self,
-        method: MexcMethod[MexcType],
-        timeout: float | None = None,
-    ) -> MexcType:  # pragma: no cover
-        """
-        Make request to Mexc API
-
-        :param method: Method instance
-        :param timeout: Request timeout
-        :param credentials: Optional credentials to use for this specific request
-        :return:
-        :raise MexcAPIError:
-        """
-        pass
-
     async def request(
         self,
         method: MexcMethod[MexcType],
@@ -204,13 +190,7 @@ class BaseSession(ABC):
         :return:
         :raise MexcAPIError:
         """
-        if method.__requires_auth__:
-            if credentials is None:
-                raise MexcApiCredentialsMissing(method)
-
-            return await self.make_signed_request(method, credentials, timeout)
-        else:
-            return await self.make_request(method, timeout)
+        pass
 
     @abstractmethod
     async def close(self) -> None:  # pragma: no cover

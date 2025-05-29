@@ -1,8 +1,7 @@
 import asyncio
 import ssl
 
-from typing import Any, Dict, Type, cast
-from urllib.parse import urljoin
+from typing import Any, Type, cast
 import certifi
 
 from aiohttp import ClientSession, TCPConnector, ClientTimeout, ClientError
@@ -13,7 +12,6 @@ from aiomexc.methods import MexcMethod
 from aiomexc.types import MexcType
 from aiomexc.__meta__ import __version__
 from aiomexc import loggers
-from aiomexc.retort import _retort
 from aiomexc.exceptions import MexcNetworkError
 
 from .base import BaseSession, Credentials
@@ -25,15 +23,12 @@ class AiohttpSession(BaseSession):
 
         self._session: ClientSession | None = None
         self._connector_type: Type[TCPConnector] = TCPConnector
-        self._connector_init: Dict[str, Any] = {
+        self._connector_init: dict[str, Any] = {
             "ssl": ssl.create_default_context(cafile=certifi.where()),
             "limit": limit,
             "ttl_dns_cache": 3600,  # Workaround for https://github.com/aiogram/aiogram/issues/1500
         }
         self._should_reset_connector = True  # flag determines connector state
-        self._headers = {
-            "Content-Type": "application/json",
-        }
 
     async def create_session(self) -> ClientSession:
         if self._should_reset_connector:
@@ -58,15 +53,14 @@ class AiohttpSession(BaseSession):
             # https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
             await asyncio.sleep(0.25)
 
-    async def _request(
+    async def request(
         self,
         method: MexcMethod[MexcType],
-        params: dict[str, Any],
-        headers: dict[str, Any],
+        credentials: Credentials | None = None,
         timeout: float | None = None,
     ) -> MexcType:
         session = await self.create_session()
-        url = urljoin(self._base_url, method.__api_method__)
+        url, params, headers = self.prepare_request(method, credentials)
 
         loggers.client.debug(
             "Requesting %s %s with params %s", method.__api_http_method__, url, params
@@ -93,28 +87,6 @@ class AiohttpSession(BaseSession):
             method=method, status_code=resp.status, content=raw_result
         )
         return cast(MexcType, response.result)
-
-    async def make_signed_request(
-        self,
-        method: MexcMethod[MexcType],
-        credentials: Credentials,
-        timeout: float | None = None,
-    ) -> MexcType:
-        params = _retort.dump(method)
-        headers = self._headers.copy()
-
-        if method.__requires_auth__:
-            params = self.encrypt_params(credentials.secret_key, params)
-            headers["X-MEXC-APIKEY"] = credentials.access_key
-
-        return await self._request(method, params, headers, timeout)
-
-    async def make_request(
-        self,
-        method: MexcMethod[MexcType],
-        timeout: float | None = None,
-    ) -> MexcType:
-        return await self._request(method, _retort.dump(method), self._headers, timeout)
 
     async def __aenter__(self) -> "AiohttpSession":
         await self.create_session()

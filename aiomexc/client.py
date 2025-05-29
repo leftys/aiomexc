@@ -38,17 +38,24 @@ class MexcClient:
         self.credentials = credentials
 
     async def __call__(
-        self, method: MexcMethod[MexcType], credentials: Credentials | None = None
+        self,
+        method: MexcMethod[MexcType],
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
     ) -> MexcType:
-        return await self.session.request(method, credentials or self.credentials)
+        return await self.session.request(
+            method, credentials or self.credentials, timeout=timeout
+        )
 
     async def get_ticker_price(self, symbol: str) -> TickerPrice:
         return await self(GetTickerPrice(symbol=symbol))
 
     async def get_account_information(
-        self, credentials: Credentials | None = None
+        self, credentials: Credentials | None = None, timeout: float | None = None
     ) -> AccountInformation:
-        return await self(GetAccountInformation(), credentials=credentials)
+        return await self(
+            GetAccountInformation(), credentials=credentials, timeout=timeout
+        )
 
     async def query_order(
         self,
@@ -56,6 +63,7 @@ class MexcClient:
         order_id: str | None = None,
         orig_client_order_id: str | None = None,
         credentials: Credentials | None = None,
+        timeout: float | None = None,
     ) -> Order:
         return await self(
             QueryOrder(
@@ -64,36 +72,52 @@ class MexcClient:
                 orig_client_order_id=orig_client_order_id,
             ),
             credentials=credentials,
+            timeout=timeout,
         )
 
     async def create_listen_key(
-        self, credentials: Credentials | None = None
+        self, credentials: Credentials | None = None, timeout: float | None = None
     ) -> ListenKey:
-        return await self(CreateListenKey(), credentials=credentials)
+        return await self(CreateListenKey(), credentials=credentials, timeout=timeout)
 
     async def get_listen_keys(
-        self, credentials: Credentials | None = None
+        self, credentials: Credentials | None = None, timeout: float | None = None
     ) -> ListenKeys:
-        return await self(GetListenKeys(), credentials=credentials)
+        return await self(GetListenKeys(), credentials=credentials, timeout=timeout)
 
     async def extend_listen_key(
-        self, listen_key: str, credentials: Credentials | None = None
+        self,
+        listen_key: str,
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
     ) -> ListenKey:
         return await self(
-            ExtendListenKey(listen_key=listen_key), credentials=credentials
+            ExtendListenKey(listen_key=listen_key),
+            credentials=credentials,
+            timeout=timeout,
         )
 
     async def delete_listen_key(
-        self, listen_key: str, credentials: Credentials | None = None
+        self,
+        listen_key: str,
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
     ) -> ListenKey:
         return await self(
-            DeleteListenKey(listen_key=listen_key), credentials=credentials
+            DeleteListenKey(listen_key=listen_key),
+            credentials=credentials,
+            timeout=timeout,
         )
 
     async def get_open_orders(
-        self, symbol: str, credentials: Credentials | None = None
+        self,
+        symbol: str,
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
     ) -> list[Order]:
-        return await self(GetOpenOrders(symbol=symbol), credentials=credentials)
+        return await self(
+            GetOpenOrders(symbol=symbol), credentials=credentials, timeout=timeout
+        )
 
     async def create_order(
         self,
@@ -105,6 +129,7 @@ class MexcClient:
         price: Decimal | None = None,
         new_client_order_id: str | None = None,
         credentials: Credentials | None = None,
+        timeout: float | None = None,
     ) -> CreateOrderType:
         return await self(
             CreateOrder(
@@ -117,4 +142,5 @@ class MexcClient:
                 new_client_order_id=new_client_order_id,
             ),
             credentials=credentials,
+            timeout=timeout,
         )
