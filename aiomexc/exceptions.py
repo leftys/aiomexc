@@ -131,6 +131,12 @@ class MexcApiInsufficientBalance(MexcAPIError):
     """
 
 
+class MexcApiRiskControlError(MexcAPIError):
+    """
+    Exception raised when risk control is triggered.
+    """
+
+
 class ClientDecodeError(MexcClientError):
     """
     Exception raised when client can't decode response. (Malformed response, etc.)

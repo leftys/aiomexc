@@ -29,6 +29,7 @@ from aiomexc.exceptions import (
     MexcApiInsufficientBalance,
     ClientDecodeError,
     MexcApiCredentialsMissing,
+    MexcApiRiskControlError,
 )
 from aiomexc.retort import _retort
 
@@ -76,6 +77,7 @@ class BaseSession(ABC):
             200006: MexcApiRequireKyc,  # User requires KYC
             30005: MexcApiOversold,  # Order is oversold
             30004: MexcApiInsufficientBalance,  # Insufficient balance
+            30019: MexcApiRiskControlError,  # Probably, risk control is triggered
         }
         self._headers = {
             "Content-Type": "application/json",
