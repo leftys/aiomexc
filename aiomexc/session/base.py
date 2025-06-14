@@ -70,7 +70,7 @@ class BaseSession(ABC):
             730708: MexcApiInvalidListenKey,  # Invalid listen key
             700006: MexcApiIpNotAllowed,  # IP [x] not in the ip white list
             700002: MexcApiSignatureInvalid,  # Signature for this request is not valid.
-            700003: MexcApiOpenOrdersTooMany,  # Open orders too many
+            30069: MexcApiOpenOrdersTooMany,  # Open orders too many
             700007: MexcApiInsufficientRights,  # Insufficient rights with this API key
             429: MexcApiRateLimitExceeded,  # Rate limit exceeded
             200010: MexcApiRequireKyc,  # User requires KYC
