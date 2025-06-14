@@ -152,11 +152,13 @@ class BaseSession(ABC):
             raise exception_cls(
                 method=method,
                 message=message,
+                error_code=api_code,
             )
 
         raise MexcAPIError(
             method=method,
             message=message,
+            error_code=api_code,
         )
 
     def prepare_request(

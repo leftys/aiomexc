@@ -36,13 +36,15 @@ class MexcAPIError(DetailedMexcClientError):
         self,
         method: MexcMethod[MexcType],
         message: str,
+        error_code: int,
     ) -> None:
         super().__init__(message=message)
+        self.error_code = error_code
         self.method = method
 
     def __str__(self) -> str:
         original_message = super().__str__()
-        return f"{self.label} - {original_message}"
+        return f"{self.label} - {original_message} (error_code: {self.error_code})"
 
 
 class MexcNetworkError(MexcAPIError):
