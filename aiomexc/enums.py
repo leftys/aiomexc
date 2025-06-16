@@ -12,6 +12,7 @@ class OrderType(StrEnum):
     LIMIT_MAKER = "LIMIT_MAKER"
     IMMEDIATE_OR_CANCEL = "IMMEDIATE_OR_CANCEL"
     FILL_OR_KILL = "FILL_OR_KILL"
+    OCO_LIMIT_ORDER = "OCO_LIMIT_ORDER"
 
 
 class OrderStatus(StrEnum):

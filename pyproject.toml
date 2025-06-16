@@ -45,7 +45,7 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-    "adaptix~=3.0.0b9",
+    "adaptix~=3.0.0b11",
     "aiohttp~=3.11.13",
     "certifi>=2023.7.22",
 ]
