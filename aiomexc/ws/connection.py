@@ -25,6 +25,8 @@ from aiomexc.exceptions import (
     MexcWsPrivateStream,
     MexcWsConnectionClosed,
     MexcApiKeyInvalid,
+    MexcWsConnectionHandshakeError,
+    MexcWsConnectionTimeoutError,
 )
 
 from .proto import PushMessage
@@ -334,7 +336,18 @@ class WSConnection:
             listen_key = await self.get_listen_key()
             url = urljoin(url, f"?listenKey={listen_key}")
 
-        await self._session.connect(url)
+        while True:
+            try:
+                await self._session.connect(url)
+                break
+            except MexcWsConnectionHandshakeError as e:
+                logger.error("Connection handshake failed: %s", e)
+                await asyncio.sleep(1)
+
+            except MexcWsConnectionTimeoutError as e:
+                logger.error("Connection timeout: %s", e)
+                await asyncio.sleep(1)
+
         await self._session.subscribe(self._streams)
 
         self._restart_service_tasks()

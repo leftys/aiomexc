@@ -227,13 +227,26 @@ class MexcWsConnectionClosed(DetailedMexcClientError):
         super().__init__("Connection closed")
 
 
-class MexcWsConnectionError(DetailedMexcClientError):
+class MexcWsUnknownMessageTypeError(DetailedMexcClientError):
     """
-    Exception raised when the connection is not established.
+    Exception raised when the message type is unknown.
     """
 
-    def __init__(self):
-        super().__init__("Connection error")
+
+class MexcWsConnectionTimeoutError(DetailedMexcClientError):
+    """
+    Exception raised when the connection timeout occurs.
+    """
+
+
+class MexcWsConnectionHandshakeError(DetailedMexcClientError):
+    """
+    Exception raised when the connection handshake fails.
+    """
+
+    def __init__(self, status: int):
+        self.status = status
+        super().__init__(f"Connection handshake failed with status: {status}")
 
 
 class MexcWsConnectionNotEstablished(DetailedMexcClientError):

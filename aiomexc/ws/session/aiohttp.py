@@ -3,13 +3,16 @@ from aiohttp import (
     ClientWebSocketResponse,
     WSMsgType,
     WSServerHandshakeError,
+    ConnectionTimeoutError,
 )
 
 from aiomexc.ws.messages import PING, subscription
 from aiomexc.exceptions import (
     MexcWsConnectionClosed,
-    MexcWsConnectionError,
     MexcWsConnectionNotEstablished,
+    MexcWsUnknownMessageTypeError,
+    MexcWsConnectionTimeoutError,
+    MexcWsConnectionHandshakeError,
 )
 
 from .base import BaseWsSession, EventMessage, ConnectionMessage
@@ -29,17 +32,16 @@ class AiohttpWsSession(BaseWsSession):
         if self.ws_session is not None and not self.ws_session.closed:
             return
 
-        while True:
-            try:
-                self.ws_session = await self.http_session.ws_connect(
-                    url,
-                    autoping=False,
-                    autoclose=True,
-                )
-                break
-            except WSServerHandshakeError as e:
-                if e.status >= 500:
-                    continue
+        try:
+            self.ws_session = await self.http_session.ws_connect(
+                url,
+                autoping=False,
+                autoclose=True,
+            )
+        except WSServerHandshakeError as e:
+            raise MexcWsConnectionHandshakeError(e.status) from e
+        except ConnectionTimeoutError as e:
+            raise MexcWsConnectionTimeoutError("Connection timeout") from e
 
     async def subscribe(self, streams: list[str]) -> None:
         if self.ws_session is None or self.ws_session.closed:
@@ -62,7 +64,7 @@ class AiohttpWsSession(BaseWsSession):
         elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise MexcWsConnectionClosed()
 
-        raise MexcWsConnectionError(f"Unknown message type: {msg.type}")
+        raise MexcWsUnknownMessageTypeError(f"Unknown message type: {msg.type}")
 
     async def ping(self) -> None:
         if self.ws_session is None or self.ws_session.closed:
