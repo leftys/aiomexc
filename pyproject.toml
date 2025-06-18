@@ -55,7 +55,7 @@ aiomexc = "aiomexc.__main__:main"
 
 [project.optional-dependencies]
 ws = ["pure_protobuf~=3.1.3"]
-cli = ["questionary~=1.14.0"]
+cli = ["questionary~=2.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/sheldygg/aiomexc"
