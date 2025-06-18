@@ -47,6 +47,7 @@ dynamic = ["version"]
 dependencies = [
     "adaptix~=3.0.0b11",
     "aiohttp~=3.11.13",
+    "aiohttp-socks~=0.10.1",
     "certifi>=2023.7.22",
 ]
 
