@@ -13,6 +13,7 @@ ACTIVE_CREDENTIALS_FILE = CONFIG_DIR / "active_credentials.json"
 @dataclass
 class CliCredentials(Credentials):
     name: str
+    socks5_proxy: str | None = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -34,6 +35,7 @@ class CredentialsManager:
                     name=name,
                     access_key=credentials["access_key"],
                     secret_key=credentials["secret_key"],
+                    socks5_proxy=credentials.get("socks5_proxy"),
                 )
                 for name, credentials in data.items()
             }
@@ -51,6 +53,7 @@ class CredentialsManager:
             name: {
                 "access_key": credentials.access_key,
                 "secret_key": credentials.secret_key,
+                "socks5_proxy": credentials.socks5_proxy,
             }
             for name, credentials in self._credentials.items()
         }

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from questionary import select, Choice, text, password, Separator
 
 from aiomexc.client import MexcClient
+
 from .credentials import CredentialsManager, CliCredentials
+from .aiohttp_session import CliAiohttpSession
 
 
 @dataclass
@@ -46,7 +48,7 @@ class MexcCli:
 
     def __init__(self):
         self.credentials_manager = CredentialsManager()
-        self.mexc_client = MexcClient()
+        self.mexc_client = MexcClient(session=CliAiohttpSession())
         self._setup_menus()
 
     def _setup_menus(self) -> None:
@@ -105,9 +107,15 @@ class MexcCli:
         name = await text("Enter a name for this API key:").ask_async()
         access_key = await text("Enter API Access Key:").ask_async()
         secret_key = await password("Enter API Secret Key:").ask_async()
+        socks5_proxy = await text("Enter socks5 proxy (optional):").ask_async()
 
         self.credentials_manager.save_credentials(
-            CliCredentials(name=name, access_key=access_key, secret_key=secret_key)
+            CliCredentials(
+                name=name,
+                access_key=access_key,
+                secret_key=secret_key,
+                socks5_proxy=socks5_proxy,
+            )
         )
         print(f"API key {name!r} saved successfully!")
 
