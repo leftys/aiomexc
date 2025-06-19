@@ -1,4 +1,5 @@
-from adaptix import NameStyle, Retort, name_mapping
+from datetime import datetime, UTC
+from adaptix import NameStyle, Retort, name_mapping, loader
 
 from aiomexc.methods import (
     MexcMethod,
@@ -49,9 +50,12 @@ method_recipes = [
         DeleteListenKey,
     ]
 ]
+another_recipes = [
+    loader(datetime, lambda x: datetime.fromtimestamp(x / 1000, tz=UTC)),
+]
 
 _retort = Retort(
-    recipe=method_recipes + type_recipes,
+    recipe=method_recipes + type_recipes + another_recipes,
 )
 
 __all__ = ["_retort"]

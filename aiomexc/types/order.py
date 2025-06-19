@@ -1,5 +1,6 @@
 from decimal import Decimal
 from dataclasses import dataclass
+from datetime import datetime
 
 from aiomexc.enums import OrderStatus, OrderType, OrderSide
 
@@ -19,8 +20,8 @@ class Order:
     type: OrderType
     side: OrderSide
     stop_price: Decimal | None
-    time: int
-    update_time: int | None
+    time: datetime
+    update_time: datetime | None
     is_working: bool
     orig_quote_order_qty: Decimal | None
 

@@ -117,14 +117,14 @@ class BaseSession(ABC):
                 data=content,
             )
 
+        api_code = 200
+        msg = None
+
         if isinstance(
             json_data, dict
         ):  # we can trust the api that the error will not be returned in the list
             api_code = int(json_data.get("code", 200))
             msg = json_data.get("msg")
-        else:
-            api_code = 200
-            msg = None
 
         wrapped_result = {
             "ok": status_code < 400,
