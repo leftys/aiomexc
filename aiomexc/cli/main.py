@@ -100,7 +100,9 @@ class MexcCli:
         else:
             print("\nSaved API keys:")
             for key in keys:
-                print(f"- {key.name} ({key.access_key})")
+                print(
+                    f"- {key.name} ({key.access_key}) {'[active]' if key.is_active else ''}"
+                )
 
     async def _add_credentials(self) -> None:
         """Add new credentials."""
@@ -144,7 +146,10 @@ class MexcCli:
         selected = await select(
             "Select API key to set as active:",
             choices=[
-                Choice(f"{key.name} ({key.access_key})", value=key) for key in keys
+                Choice(
+                    f"{key.name} ({key.access_key})", value=key, checked=key.is_active
+                )
+                for key in keys
             ],
         ).ask_async()
 
