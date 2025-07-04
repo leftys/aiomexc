@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "aiomexc"
-version = "0.2.15"
+version = "0.2.16"
 description = "Asynchronous MEXC API wrapper"
 readme = "README.md"
 authors = [{ name = "Sheldy", email = "chikibamtioma@gmail.com" }]
