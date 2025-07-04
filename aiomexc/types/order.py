@@ -35,4 +35,4 @@ class CreateOrder:
     orig_qty: Decimal
     type: OrderType
     side: OrderSide
-    transact_time: int
+    transact_time: datetime
