@@ -27,7 +27,7 @@ class Order:
 
 
 @dataclass
-class CreateOrder:
+class CreatedOrder:
     symbol: str
     order_id: str
     order_list_id: int
@@ -36,3 +36,16 @@ class CreateOrder:
     type: OrderType
     side: OrderSide
     transact_time: datetime
+
+
+@dataclass
+class CanceledOrder:
+    symbol: str
+    order_id: str
+    price: Decimal
+    orig_qty: Decimal
+    executed_qty: Decimal
+    cummulative_quote_qty: Decimal
+    status: OrderStatus
+    type: OrderType
+    side: OrderSide

@@ -16,7 +16,8 @@ from aiomexc.types import (
     TickerPrice,
     ListenKey,
     ListenKeys,
-    CreateOrder as CreateOrderType,
+    CreatedOrder,
+    CanceledOrder,
 )
 
 type_recipes = [
@@ -30,7 +31,8 @@ type_recipes = [
         TickerPrice,
         ListenKey,
         ListenKeys,
-        CreateOrderType,
+        CreatedOrder,
+        CanceledOrder,
     ]
 ]
 

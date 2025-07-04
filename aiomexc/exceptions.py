@@ -1,13 +1,43 @@
 from typing import Any
 
-from aiomexc.methods import MexcMethod
-from aiomexc.types import MexcType
+from .methods.base import MexcMethod
+from .types import MexcType
 
 
 class MexcClientError(Exception):
     """
     Base exception for all mexc client errors.
     """
+
+
+class MexcBadRequestEitherParamsRequiredError(MexcClientError):
+    """
+    Exception raised when request is malformed.
+    This error is raised when at least one of the optional parameters is not provided.
+    """
+
+    def __init__(self, method: MexcMethod[MexcType], optional_params: list[str]):
+        self.method = method
+        self.optional_params = optional_params
+
+    def __str__(self) -> str:
+        parameters = ", ".join(self.optional_params)
+        return f"{self.method.__class__.__name__} requires at least one of the following parameters: {parameters}."
+
+
+class MexcBadRequestParamsRequiredError(MexcClientError):
+    """
+    Exception raised when request is malformed.
+    This error is raised when at least one of the required parameters is not provided.
+    """
+
+    def __init__(self, method: MexcMethod[MexcType], required_params: list[str]):
+        self.method = method
+        self.required_params = required_params
+
+    def __str__(self) -> str:
+        parameters = ", ".join(self.required_params)
+        return f"{self.method.__class__.__name__} requires the following parameters: {parameters}."
 
 
 class DetailedMexcClientError(MexcClientError):

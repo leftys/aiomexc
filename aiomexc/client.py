@@ -11,6 +11,7 @@ from aiomexc.methods import (
     DeleteListenKey,
     GetOpenOrders,
     CreateOrder,
+    CancelOrder,
 )
 from aiomexc.enums import OrderSide, OrderType
 from aiomexc.types import (
@@ -20,7 +21,8 @@ from aiomexc.types import (
     MexcType,
     ListenKey,
     ListenKeys,
-    CreateOrder as CreateOrderType,
+    CreatedOrder,
+    CanceledOrder,
 )
 
 from .session.base import BaseSession, Credentials
@@ -130,7 +132,7 @@ class MexcClient:
         new_client_order_id: str | None = None,
         credentials: Credentials | None = None,
         timeout: float | None = None,
-    ) -> CreateOrderType:
+    ) -> CreatedOrder:
         return await self(
             CreateOrder(
                 symbol=symbol,
@@ -139,6 +141,26 @@ class MexcClient:
                 quantity=quantity,
                 quote_order_qty=quote_order_qty,
                 price=price,
+                new_client_order_id=new_client_order_id,
+            ),
+            credentials=credentials,
+            timeout=timeout,
+        )
+
+    async def cancel_order(
+        self,
+        symbol: str,
+        order_id: str | None = None,
+        orig_client_order_id: str | None = None,
+        new_client_order_id: str | None = None,
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
+    ) -> CanceledOrder:
+        return await self(
+            CancelOrder(
+                symbol=symbol,
+                order_id=order_id,
+                orig_client_order_id=orig_client_order_id,
                 new_client_order_id=new_client_order_id,
             ),
             credentials=credentials,
