@@ -371,12 +371,16 @@ class WSConnection:
                 continue
 
             except MexcApiKeyInvalid:
-                logger.warning("Listen key is invalid, closing connection")
+                logger.warning("MexcApiKeyInvalid, closing connection")
                 await self.close()
                 break
 
             except Exception as e:
-                logger.error("Error listening to updates: %s", e)
+                logger.error(
+                    "Error listening to updates: %s: %s",
+                    e.__class__.__name__,
+                    e,
+                )
                 await self._trigger_event(EventType.ERROR, e)
                 if not self._shutdown_event.is_set():
                     raise
