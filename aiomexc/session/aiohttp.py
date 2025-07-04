@@ -10,7 +10,6 @@ from aiohttp.http import SERVER_SOFTWARE
 
 from aiomexc.methods import MexcMethod
 from aiomexc.types import MexcType
-from aiomexc.__meta__ import __version__
 from aiomexc import loggers
 from aiomexc.exceptions import MexcNetworkError
 
@@ -38,7 +37,7 @@ class AiohttpSession(BaseSession):
             self._session = ClientSession(
                 connector=self._connector_type(**self._connector_init),
                 headers={
-                    USER_AGENT: f"{SERVER_SOFTWARE} aiomexc/{__version__}",
+                    USER_AGENT: f"{SERVER_SOFTWARE} aiomexc",
                 },
             )
             self._should_reset_connector = False

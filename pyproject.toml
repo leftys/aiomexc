@@ -1,22 +1,15 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.7.19,<0.8.0"]
+build-backend = "uv_build"
 
 [project]
 name = "aiomexc"
+version = "0.2.15"
 description = "Asynchronous MEXC API wrapper"
 readme = "README.md"
-authors = [
-    { name = "Sheldy", email = "chikibamtioma@gmail.com" },
-]
+authors = [{ name = "Sheldy", email = "chikibamtioma@gmail.com" }]
 
-keywords = [
-    "mexc",
-    "api",
-    "client",
-    "wrapper",
-    "asyncio",
-]
+keywords = ["mexc", "api", "client", "wrapper", "asyncio"]
 
 requires-python = ">=3.11"
 
@@ -42,8 +35,6 @@ classifiers = [
     "Environment :: Web Environment",
 ]
 
-dynamic = ["version"]
-
 dependencies = [
     "adaptix~=3.0.0b11",
     "aiohttp~=3.11.13",
@@ -64,16 +55,9 @@ Documentation = "https://github.com/sheldygg/aiomexc"
 Tracker = "https://github.com/sheldygg/aiomexc/issues"
 Source = "https://github.com/sheldygg/aiomexc"
 
-[tool.hatch.version]
-path = "aiomexc/__meta__.py"
-
-[tool.hatch.build.targets.wheel]
-packages = ["aiomexc"]
-
-[tool.hatch.build]
-skip-excluded-dirs = true
-exclude = ["/tests", "/docs"]
-include = ["aiomexc", "pyproject.toml", "README.md"]
+[tool.uv.build-backend]
+module-root = "."
+module-name = "aiomexc"
 
 [tool.mypy]
 files = ["aiomexc"]
