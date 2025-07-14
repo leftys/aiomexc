@@ -30,6 +30,7 @@ from aiomexc.exceptions import (
     ClientDecodeError,
     MexcApiCredentialsMissing,
     MexcApiRiskControlError,
+    MexcApiSymbolNotWhiteListedError,
 )
 from aiomexc.retort import _retort
 
@@ -64,6 +65,7 @@ class BaseSession(ABC):
             700004: MexcBadRequest,  # Param 'origClientOrderId' or 'orderId' must be sent, but both were empty/null
             400: MexcBadRequest,  # api key required
             -1121: MexcBadRequest,  # Invalid symbol
+            10004: MexcApiSymbolNotWhiteListedError,  # symbol not support api
             -2013: MexcNotFound,  # Order does not exist
             10072: MexcApiKeyInvalid,  # Invalid API-Key format
             402: MexcApiKeyMissing,  # API-Key missing, not sure

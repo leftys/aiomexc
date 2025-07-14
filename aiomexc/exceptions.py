@@ -135,6 +135,12 @@ class MexcApiOpenOrdersTooMany(MexcAPIError):
     """
 
 
+class MexcApiSymbolNotWhiteListedError(MexcAPIError):
+    """
+    Exception raised when symbol is not white listed.
+    """
+
+
 class MexcApiInsufficientRights(MexcAPIError):
     """
     Exception raised when user has insufficient rights.
