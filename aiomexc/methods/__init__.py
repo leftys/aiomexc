@@ -1,6 +1,7 @@
 from .account import GetAccountInformation
 from .order import QueryOrder, GetOpenOrders, CreateOrder, CancelOrder
 from .ticker import GetTickerPrice
+from .exchange import GetExchangeInfo
 from .base import MexcMethod
 from .user_data_stream import (
     CreateListenKey,
@@ -21,4 +22,5 @@ __all__ = [
     "GetListenKeys",
     "ExtendListenKey",
     "DeleteListenKey",
+    "GetExchangeInfo",
 ]

@@ -12,6 +12,7 @@ from aiomexc.methods import (
     GetOpenOrders,
     CreateOrder,
     CancelOrder,
+    GetExchangeInfo
 )
 from aiomexc.enums import OrderSide, OrderType
 from aiomexc.types import (
@@ -51,6 +52,9 @@ class MexcClient:
 
     async def get_ticker_price(self, symbol: str) -> TickerPrice:
         return await self(GetTickerPrice(symbol=symbol))
+
+    async def get_exchange_info(self) -> dict:
+        return await self(GetExchangeInfo())
 
     async def get_account_information(
         self, credentials: Credentials | None = None, timeout: float | None = None

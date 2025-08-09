@@ -1,3 +1,6 @@
+from typing import Any
+import asyncio
+
 from aiohttp import (
     ClientSession,
     ClientWebSocketResponse,
@@ -46,8 +49,17 @@ class AiohttpWsSession(BaseWsSession):
     async def subscribe(self, streams: list[str]) -> None:
         if self.ws_session is None or self.ws_session.closed:
             raise MexcWsConnectionNotEstablished()
-
-        await self.ws_session.send_str(self.dump_message(subscription(streams)))
+        
+        # Send streams in batches of at most 30 items
+        batch_size = 30
+        for i in range(0, len(streams), batch_size):
+            batch = streams[i:i+batch_size]
+            msg = self.dump_message(subscription(batch))
+            print(f'Sending subscription message for batch {i//batch_size + 1}/{(len(streams) + batch_size - 1)//batch_size}', msg)
+            await self.ws_session.send_str(msg)
+            # Small delay between batches to avoid overwhelming the server
+            if i + batch_size < len(streams):
+                await asyncio.sleep(1.0)
 
     async def receive(self) -> EventMessage | ConnectionMessage:
         if self.ws_session is None or self.ws_session.closed:
@@ -62,6 +74,7 @@ class AiohttpWsSession(BaseWsSession):
             return EventMessage(self.load_message(msg.data))
 
         elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
+            # print('Received CLOSE message', msg)
             raise MexcWsConnectionClosed()
 
         raise MexcWsUnknownMessageTypeError(f"Unknown message type: {msg.type}")

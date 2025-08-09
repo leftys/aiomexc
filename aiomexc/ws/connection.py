@@ -37,6 +37,7 @@ from .dispatcher import EventType, EventDispatcher
 from .messages import (
     ListenKeyExtendedMessage,
     PublicAggreDealsMessage,
+    PublicLimitDepthsMessage,
     BaseMessage,
     PrivateOrdersMessage,
     PrivateDealsMessage,
@@ -68,6 +69,7 @@ class StreamHandler(Generic[T]):
 class WSConnection:
     STREAM_TYPES = {
         "spot@public.aggre.deals.v3.api.pb": PublicAggreDealsMessage,
+        "spot@public.limit.depth.v3.api.pb": PublicLimitDepthsMessage,
         "spot@private.orders.v3.api.pb": PrivateOrdersMessage,
         "spot@private.deals.v3.api.pb": PrivateDealsMessage,
     }
@@ -190,6 +192,21 @@ class WSConnection:
             handler: Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]],
         ) -> Callable[[PublicAggreDealsMessage], Coroutine[Any, Any, None]]:
             channel = f"spot@public.aggre.deals.v3.api.pb@{interval}@{symbol}"
+            return self._register_channel_handler(channel, handler, handle_as_task)
+
+        return decorator
+
+    def limit_depths(
+        self,
+        symbol: str,
+        limit: Literal["5", "10", "20", "50", "100", "500", "1000"] = "20",
+        handle_as_task: bool = True,
+    ):
+        def decorator(
+            handler: Callable[[PublicLimitDepthsMessage], Coroutine[Any, Any, None]],
+        ) -> Callable[[PublicLimitDepthsMessage], Coroutine[Any, Any, None]]:
+            # Format: spot@public.limit.depth.v3.api.pb@{SYMBOL}@{LIMIT}
+            channel = f"spot@public.limit.depth.v3.api.pb@{symbol}@{limit}"
             return self._register_channel_handler(channel, handler, handle_as_task)
 
         return decorator
@@ -348,6 +365,7 @@ class WSConnection:
                 logger.error("Connection timeout: %s", e)
                 await asyncio.sleep(1)
 
+        print('subscribing streams, n =', len(self._streams), 'streams =', self._streams)
         await self._session.subscribe(self._streams)
 
         self._restart_service_tasks()
