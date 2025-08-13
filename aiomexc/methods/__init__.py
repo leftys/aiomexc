@@ -1,4 +1,4 @@
-from .account import GetAccountInformation
+from .account import GetAccountInformation, GetMyTrades
 from .order import QueryOrder, GetOpenOrders, CreateOrder, CancelOrder
 from .ticker import GetTickerPrice
 from .exchange import GetExchangeInfo
@@ -23,4 +23,5 @@ __all__ = [
     "ExtendListenKey",
     "DeleteListenKey",
     "GetExchangeInfo",
+    "GetMyTrades",
 ]

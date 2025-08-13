@@ -12,7 +12,8 @@ from aiomexc.methods import (
     GetOpenOrders,
     CreateOrder,
     CancelOrder,
-    GetExchangeInfo
+    GetExchangeInfo,
+    GetMyTrades,
 )
 from aiomexc.enums import OrderSide, OrderType
 from aiomexc.types import (
@@ -169,4 +170,15 @@ class MexcClient:
             ),
             credentials=credentials,
             timeout=timeout,
+        )
+
+    async def get_my_trades(
+        self,
+        symbol: str,
+        limit: int = 100, # max 100
+        credentials: Credentials | None = None,
+        timeout: float | None = None,
+    ) -> list[Order]:
+        return await self(
+            GetMyTrades(symbol=symbol, limit = limit), credentials=credentials, timeout=timeout
         )
