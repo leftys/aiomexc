@@ -165,6 +165,8 @@ class WSConnection:
     ) -> Callable[[T], Coroutine[Any, Any, None]]:
         """Register a handler for a specific channel and add the channel to streams."""
         if len(self._streams) + 1 > 30:
+            print('Limit reached', self)
+            print(self._streams)
             raise MexcWsStreamsLimit(
                 stream_count=len(self._streams) + 1, max_streams=30
             )
@@ -269,6 +271,9 @@ class WSConnection:
     def is_pong_message(self, message: dict) -> bool:
         return message.get("msg") == "PONG"
 
+    def is_ping_message(self, message: dict) -> bool:
+        return message.get("msg") == "PING"
+
     async def keepalive_ping(self):
         """
         Function to send keepalive ping every 30 seconds
@@ -278,7 +283,7 @@ class WSConnection:
             await asyncio.sleep(30)
             await self._session.ping()
             await self._trigger_event(EventType.PING)
-            logger.debug("Keepalive ping sent")
+            # logger.debug("Keepalive ping sent")
 
     async def keepalive_extend_listen_key(self):
         """
@@ -416,8 +421,14 @@ class WSConnection:
                 elif isinstance(msg, ConnectionMessage):
                     if self.is_sub_message(msg.message):
                         await self._trigger_event(EventType.SUBSCRIPTION, msg.message)
+                    elif self.is_ping_message(msg.message):
+                        await self._session.pong()
                     elif self.is_pong_message(msg.message):
                         await self._trigger_event(EventType.PONG)
+                    elif msg.message.get("code"):
+                        await self._trigger_event(EventType.ERROR, msg)
+                    else:
+                        logger.error("Unknown message: %s", msg)
 
         finally:
             self._is_listening = False
